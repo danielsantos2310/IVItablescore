@@ -1,0 +1,1125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>IVI – Official Volleyball Score</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="styles.css">
+  </head>
+<body>
+  <div class="app">
+    <header class="no-print">
+      <div class="match-setup">
+        <div>
+          <label>Team A</label>
+          <input type="text" id="homeNameInput" value="Team A" />
+        </div>
+        <div>
+          <label>Team B</label>
+          <input type="text" id="awayNameInput" value="Team B" />
+        </div>
+        <div>
+          <label>Match ID</label>
+          <input type="text" id="matchIdInput" value="IVI-TEST-001" />
+        </div>
+        <div class="serve-choice">
+          <label>First Serve</label>
+          <div class="serve-options">
+            <label><input type="radio" name="firstServe" value="home" checked /> Team A</label>
+            <label><input type="radio" name="firstServe" value="away" /> Team B</label>
+          </div>
+        </div>
+        <button class="btn secondary" id="btnNewMatch">New / Reset Match</button>
+        <button class="btn secondary" id="btnLoadLast">Load Saved Match</button>
+        <button class="btn secondary" id="btnLineups">Set Lineups & Libero</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <!-- LEFT COLUMN: SCORE & CONTROLS -->
+      <section class="score-area">
+        <div class="teams-row">
+          <!-- Team A -->
+          <div class="team-card" id="homeCard">
+            <div class="serve-indicator"></div>
+            <div class="team-name" id="homeNameDisplay">Team A</div>
+            <div class="set-wins">Sets: <span id="homeSets">0</span></div>
+            <div class="main-score" id="homeScore">0</div>
+          </div>
+
+          <!-- Set info -->
+          <div class="set-info">
+            <span>Current Set</span>
+            <strong id="currentSetLabel">1</strong>
+          </div>
+
+          <!-- Team B -->
+          <div class="team-card" id="awayCard">
+            <div class="serve-indicator"></div>
+            <div class="team-name" id="awayNameDisplay">Team B</div>
+            <div class="set-wins">Sets: <span id="awaySets">0</span></div>
+            <div class="main-score" id="awayScore">0</div>
+          </div>
+        </div>
+
+        <div class="big-buttons-row">
+          <button class="btn big-btn left" id="btnPointHome">+1 Team A</button>
+          <button class="btn big-btn right" id="btnPointAway">+1 Team B</button>
+        </div>
+
+        <div class="middle-controls no-print">
+          <button class="btn secondary" id="btnUndo">Undo Last</button>
+        </div>
+
+        <div class="tags-row">
+          <span class="tag">Best of 5 (Sets 1-4 to 25, Set 5 to 15)</span>
+          <span class="tag">Minimum 2-point difference</span>
+          <span class="tag" id="matchStatusTag">Status: Live</span>
+        </div>
+        <div class="set-summary-row">
+          <div class="set-summary-label">Set scores</div>
+          <div class="set-summary-values" id="setSummaryText">--</div>
+        </div>
+
+        <div class="controls-area no-print">
+          <!-- Team A controls -->
+          <div class="controls-group">
+            <h3>Team A - Controls</h3>
+            <div class="timeouts-subs" id="homeTimeoutsSubs">Timeouts: <span id="homeTimeouts">0</span>/2 (current set) · Subs: <span id="homeSubs">0</span>/6</div>
+            <button class="btn secondary" id="btnTimeoutHome">Timeout A</button>
+            <button class="btn secondary" id="btnCardHomeYellow">Yellow Card A</button>
+            <button class="btn secondary" id="btnCardHomeRed">Red Card A</button>
+            <button class="btn secondary" id="btnSubHome">Substitution A</button>
+          </div>
+
+          <!-- Team B controls -->
+          <div class="controls-group">
+            <h3>Team B - Controls</h3>
+            <div class="timeouts-subs" id="awayTimeoutsSubs">Timeouts: <span id="awayTimeouts">0</span>/2 (current set) · Subs: <span id="awaySubs">0</span>/6</div>
+            <button class="btn secondary" id="btnTimeoutAway">Timeout B</button>
+            <button class="btn secondary" id="btnCardAwayYellow">Yellow Card B</button>
+            <button class="btn secondary" id="btnCardAwayRed">Red Card B</button>
+            <button class="btn secondary" id="btnSubAway">Substitution B</button>
+          </div>
+        </div>
+
+        <!-- Rotation / Lineups -->
+        <div class="rotation-wrapper no-print">
+          <div class="rotation-team">
+            <h3>Team A Rotation</h3>
+            <div>Libero: <span id="homeLiberoLabel">-</span></div>
+            <div class="rotation-grid" id="homeRotationGrid"></div>
+            <div class="rotation-hint">
+              Rotation follows scoring rules: receiving team rotates when gaining serve. Libero automatically replaces the chosen player in back row (except server).
+            </div>
+          </div>
+
+          <div class="rotation-team">
+            <h3>Team B Rotation</h3>
+            <div>Libero: <span id="awayLiberoLabel">-</span></div>
+            <div class="rotation-grid" id="awayRotationGrid"></div>
+            <div class="rotation-hint">
+              Rotation follows scoring rules. Libero auto in/out according to back row position.
+            </div>
+          </div>
+        </div>
+
+        <div class="middle-controls no-print">
+          <button class="btn secondary" id="btnEndSet">End Set</button>
+          <button class="btn danger" id="btnEndMatch">End Match</button>
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN: LOG + SQUADS -->
+      <section class="log-area">
+        <h2>Match Timeline</h2>
+        <div class="squad-list">
+          <div><strong>Team A Squad:</strong> <span id="homeSquadText">—</span></div>
+          <div><strong>Team B Squad:</strong> <span id="awaySquadText">—</span></div>
+        </div>
+        <ul class="log-list" id="logList"></ul>
+      </section>
+    </div>
+
+    <footer class="no-print">
+      <div class="timers">
+        <span class="timer-label">Match time:</span>
+        <span class="timer-value" id="matchTimer">00:00</span>
+        <span class="timer-label">Timeout:</span>
+        <span class="timer-value" id="timeoutTimer">--</span>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button class="btn secondary" onclick="window.print()">Print / Export PDF</button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Match Summary Modal -->
+  <div id="matchSummaryOverlay" class="summary-overlay hidden no-print">
+    <div class="summary-panel">
+      <div class="summary-header">
+        <div>
+          <div class="summary-title">Match Summary</div>
+          <div class="summary-sub" id="summaryMatchId"></div>
+        </div>
+        <button class="btn secondary" id="btnCloseSummary">Close</button>
+      </div>
+      <div class="summary-body">
+        <div class="summary-row">
+          <div class="summary-label">Result</div>
+          <div class="summary-value" id="summaryResult"></div>
+        </div>
+        <div class="summary-row">
+          <div class="summary-label">Duration</div>
+          <div class="summary-value" id="summaryDuration"></div>
+        </div>
+        <div class="summary-row">
+          <div class="summary-label">Set Scores</div>
+          <div class="summary-value" id="summarySets"></div>
+        </div>
+        <div class="summary-row">
+          <div class="summary-label">Cards</div>
+          <div class="summary-value" id="summaryCards"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "ivi_current_match_v3";
+
+    function loadMatchFromStorage() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      try {
+        return JSON.parse(raw);
+      } catch (e) {
+        console.error("Error reading localStorage:", e);
+        return null;
+      }
+    }
+
+    function saveMatchToStorage() {
+      if (!match) return;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(match));
+    }
+
+    let match = null;
+    let matchTimerInterval = null;
+    let timeoutTimerInterval = null;
+
+    function createNewMatch() {
+      const homeName = document.getElementById("homeNameInput").value || "Team A";
+      const awayName = document.getElementById("awayNameInput").value || "Team B";
+      const matchId = document.getElementById("matchIdInput").value || ("IVI-" + Date.now());
+      const serveChoice = document.querySelector('input[name="firstServe"]:checked')
+        ? document.querySelector('input[name="firstServe"]:checked').value
+        : "home";
+
+      if (matchTimerInterval) clearInterval(matchTimerInterval);
+      if (timeoutTimerInterval) clearInterval(timeoutTimerInterval);
+
+      match = {
+        id: matchId,
+        homeTeam: homeName,
+        awayTeam: awayName,
+        bestOf: 5,
+        status: "live", // "live" | "finished"
+        firstServer: serveChoice,
+        currentSet: 1,
+        sets: [
+          { setNumber: 1, homePoints: 0, awayPoints: 0, winner: null }
+        ],
+        homeSetsWon: 0,
+        awaySetsWon: 0,
+        homeTimeouts: 0,
+        awayTimeouts: 0,
+        serving: serveChoice || "home", // "home" | "away"
+        events: [],
+
+        // Lineups / rotation
+        homeRoster: [],
+        awayRoster: [],
+        homeBaseRotation: [null, null, null, null, null, null],
+        awayBaseRotation: [null, null, null, null, null, null],
+        homeLibero: null,
+        awayLibero: null,
+        homeLiberoPartner: null,
+        homeLiberoPartner2: null,
+        awayLiberoPartner: null,
+        awayLiberoPartner2: null,
+        homeCourt: [null, null, null, null, null, null],
+        awayCourt: [null, null, null, null, null, null],
+        homeLiberoPos: null,
+        awayLiberoPos: null,
+        homeStartingSix: [null, null, null, null, null, null],
+        awayStartingSix: [null, null, null, null, null, null],
+        homeSubsUsed: 0,
+        awaySubsUsed: 0,
+        maxSubsPerSet: 6,
+        homePlayerNames: {},
+        awayPlayerNames: {},
+
+        // Timers
+        matchStartTime: null, // ISO string
+        matchEndTime: null,
+        timeoutTeam: null,  // "home" | "away" | null
+        timeoutEnd: null    // timestamp ms
+      };
+
+      saveMatchToStorage();
+      renderAll();
+      addEvent("SYSTEM", `New match started: ${homeName} vs ${awayName}`);
+      updateTimers();
+    }
+
+    // ---- Lineups & Rotation ----
+    function syncPlayerNamesWithRoster(team) {
+      if (!match) return;
+      const rosterKey = team === "home" ? "homeRoster" : "awayRoster";
+      const namesKey = team === "home" ? "homePlayerNames" : "awayPlayerNames";
+      const roster = match[rosterKey] || [];
+      const names = match[namesKey] || {};
+      // Remove names for players no longer in roster
+      Object.keys(names).forEach(k => {
+        if (!roster.includes(k)) delete names[k];
+      });
+      match[namesKey] = names;
+    }
+
+    function promptPlayerName(team, num) {
+      if (!match || !num) return;
+      const namesKey = team === "home" ? "homePlayerNames" : "awayPlayerNames";
+      const names = match[namesKey] || {};
+      const existing = names[num] || "";
+      const nm = prompt(`Enter name for #${num} (${team === "home" ? match.homeTeam : match.awayTeam}):`, existing);
+      if (nm === null) return;
+      const val = nm.trim();
+      if (val) {
+        names[num] = val;
+      } else {
+        delete names[num];
+      }
+      match[namesKey] = names;
+      saveMatchToStorage();
+      renderSquads();
+    }
+
+    function setLineups() {
+      if (!match) {
+        alert("Create or load a match first.");
+        return;
+      }
+
+      const homeRosterStr = prompt(
+        "Enter Team A players (jersey numbers, max 14, separated by commas):",
+        match.homeRoster && match.homeRoster.length ? match.homeRoster.join(",") : ""
+      );
+      if (!homeRosterStr) return;
+      const homeRoster = homeRosterStr.split(",").map(s => s.trim()).filter(s => s);
+      if (homeRoster.length > 14) {
+        alert("Maximum 14 players for Team A. Extra numbers will be ignored.");
+      }
+      match.homeRoster = homeRoster.slice(0, 14);
+
+      const awayRosterStr = prompt(
+        "Enter Team B players (jersey numbers, max 14, separated by commas):",
+        match.awayRoster && match.awayRoster.length ? match.awayRoster.join(",") : ""
+      );
+      if (!awayRosterStr) return;
+      const awayRoster = awayRosterStr.split(",").map(s => s.trim()).filter(s => s);
+      if (awayRoster.length > 14) {
+        alert("Maximum 14 players for Team B. Extra numbers will be ignored.");
+      }
+      match.awayRoster = awayRoster.slice(0, 14);
+
+      const homeStartStr = prompt(
+        "Enter Team A starting six (6 jersey numbers, separated by commas) in rotation order:",
+        match.homeBaseRotation && match.homeBaseRotation.some(x => x)
+          ? match.homeBaseRotation.join(",")
+          : (homeRoster.slice(0,6).join(","))
+      );
+      if (!homeStartStr) return;
+      const homeStart = homeStartStr.split(",").map(s => s.trim()).filter(s => s);
+      if (homeStart.length !== 6) {
+        alert("You must enter exactly 6 numbers for Team A starting six.");
+        return;
+      }
+      match.homeBaseRotation = homeStart;
+      match.homeStartingSix = homeStart.slice();
+
+      const awayStartStr = prompt(
+        "Enter Team B starting six (6 jersey numbers, separated by commas) in rotation order:",
+        match.awayBaseRotation && match.awayBaseRotation.some(x => x)
+          ? match.awayBaseRotation.join(",")
+          : (awayRoster.slice(0,6).join(","))
+      );
+      if (!awayStartStr) return;
+      const awayStart = awayStartStr.split(",").map(s => s.trim()).filter(s => s);
+      if (awayStart.length !== 6) {
+        alert("You must enter exactly 6 numbers for Team B starting six.");
+        return;
+      }
+      match.awayBaseRotation = awayStart;
+      match.awayStartingSix = awayStart.slice();
+
+      const homeLibero = prompt(
+        "Enter Team A libero jersey number (or leave blank if no libero):",
+        match.homeLibero || ""
+      );
+      match.homeLibero = homeLibero && homeLibero.trim() ? homeLibero.trim() : null;
+
+      const homePartner = prompt(
+        "Enter jersey number that libero replaces in back row for Team A (usually a middle):",
+        match.homeLiberoPartner || ""
+      );
+      match.homeLiberoPartner = homePartner && homePartner.trim() ? homePartner.trim() : null;
+
+      const homePartner2 = prompt(
+        "Enter SECOND jersey number libero can replace in back row for Team A (optional):",
+        match.homeLiberoPartner2 || ""
+      );
+      match.homeLiberoPartner2 = homePartner2 && homePartner2.trim() ? homePartner2.trim() : null;
+
+      const awayLibero = prompt(
+        "Enter Team B libero jersey number (or leave blank if no libero):",
+        match.awayLibero || ""
+      );
+      match.awayLibero = awayLibero && awayLibero.trim() ? awayLibero.trim() : null;
+
+      const awayPartner = prompt(
+        "Enter jersey number that libero replaces in back row for Team B:",
+        match.awayLiberoPartner || ""
+      );
+      match.awayLiberoPartner = awayPartner && awayPartner.trim() ? awayPartner.trim() : null;
+
+      const awayPartner2 = prompt(
+        "Enter SECOND jersey number libero can replace in back row for Team B (optional):",
+        match.awayLiberoPartner2 || ""
+      );
+      match.awayLiberoPartner2 = awayPartner2 && awayPartner2.trim() ? awayPartner2.trim() : null;
+
+      // After numbers are set, allow names entry (click-to-edit later as well)
+      syncPlayerNamesWithRoster("home");
+      syncPlayerNamesWithRoster("away");
+
+      updateCurrentCourt("home");
+      updateCurrentCourt("away");
+
+      saveMatchToStorage();
+      renderAll();
+      addEvent("SYSTEM", "Lineups and libero settings updated.");
+    }
+
+    function confirmLineupsForNextSet() {
+      if (!match) return;
+      const ok = confirm("Confirm starting players/positions for the next set?\n\nOK = keep same starters/positions (reset to starting order)\nCancel = re-enter lineups and libero");
+      if (!ok) {
+        setLineups();
+      } else {
+        // Reset rotations to the stored starting six so we don't carry over the last set's end position
+        if (match.homeStartingSix && match.homeStartingSix.length === 6) {
+          match.homeBaseRotation = match.homeStartingSix.slice();
+        }
+        if (match.awayStartingSix && match.awayStartingSix.length === 6) {
+          match.awayBaseRotation = match.awayStartingSix.slice();
+        }
+        updateCurrentCourt("home");
+        updateCurrentCourt("away");
+        saveMatchToStorage();
+        renderAll();
+      }
+    }
+
+    function rotateBaseOnce(team) {
+      const baseKey = team === "home" ? "homeBaseRotation" : "awayBaseRotation";
+      const arr = match[baseKey];
+      if (!arr || arr.length !== 6) return;
+      // Rotation is clockwise: 2->1, 3->2, 4->3, 5->4, 6->5, 1->6
+      arr.push(arr.shift());
+      updateCurrentCourt(team);
+    }
+
+    function updateCurrentCourt(team) {
+      if (!match) return;
+      const baseKey = team === "home" ? "homeBaseRotation" : "awayBaseRotation";
+      const liberoKey = team === "home" ? "homeLibero" : "awayLibero";
+      const courtKey = team === "home" ? "homeCourt" : "awayCourt";
+      const liberoPosKey = team === "home" ? "homeLiberoPos" : "awayLiberoPos";
+      const liberoPartnerKeys = team === "home"
+        ? ["homeLiberoPartner", "homeLiberoPartner2"]
+        : ["awayLiberoPartner", "awayLiberoPartner2"];
+      const base = match[baseKey] || [];
+      const liberoNum = match[liberoKey];
+      const partners = liberoPartnerKeys
+        .map(k => match[k])
+        .filter(Boolean);
+      let court = base.slice();
+      let liberoPos = null;
+
+      // Mapping: 0=Pos1 (back-right/server), 1=Pos2 (front-right), 2=Pos3 (front-middle),
+      // 3=Pos4 (front-left), 4=Pos5 (back-left), 5=Pos6 (back-middle)
+      // Front row: [1,2,3], Back row: [4,5,0]
+      const backRow = [4, 5, 0];
+      const frontRow = [1, 2, 3];
+
+      if (liberoNum && partners.length) {
+        const isServing = match.serving === team;
+
+        // Find the first partner currently in the back row (0 -> 5 -> 4 order by rotation logic).
+        for (const partner of partners) {
+          const partnerIdx = base.indexOf(partner);
+          const eligible =
+            partnerIdx !== -1 &&
+            backRow.includes(partnerIdx) &&
+            base[partnerIdx] !== liberoNum &&
+            !(partnerIdx === 0 && isServing); // do not replace server when serving
+          if (eligible) {
+            court[partnerIdx] = liberoNum;
+            liberoPos = partnerIdx;
+            break;
+          }
+        }
+      }
+
+      match[courtKey] = court;
+      match[liberoPosKey] = liberoPos;
+    }
+
+    // ---- Events / actions ----
+    function addEvent(type, text, team = null, extra = {}) {
+      if (!match) return;
+      const now = new Date();
+      const ev = {
+        type,
+        text,
+        team,
+        setNumber: match.currentSet,
+        time: now.toISOString(),
+        ...extra
+      };
+      match.events.push(ev);
+      renderLog();
+    }
+
+    function ensureMatchTimerStarted() {
+      if (!match.matchStartTime) {
+        match.matchStartTime = new Date().toISOString();
+        startMatchTimer();
+      }
+    }
+
+    function addPoint(team) {
+      if (!match || match.status === "finished") {
+        alert("Match is already finished.");
+        return;
+      }
+
+      ensureMatchTimerStarted();
+
+      const set = match.sets[match.sets.length - 1];
+      const prevServing = match.serving;
+      let rotationHappened = false;
+
+      if (team === "home") {
+        set.homePoints++;
+      } else {
+        set.awayPoints++;
+      }
+
+      // Scoring logic:
+      // If serving team scores, they keep serve, no rotation.
+      // If receiving team scores, they rotate and gain serve.
+      if (team !== prevServing) {
+        // receiving team scored
+        rotationHappened = true;
+        if (team === "home") {
+          rotateBaseOnce("home");
+        } else {
+          rotateBaseOnce("away");
+        }
+        match.serving = team;
+      }
+      // Re-evaluate courts whenever serve status may change so libero in/out is correct
+      updateCurrentCourt("home");
+      updateCurrentCourt("away");
+
+      const teamName = team === "home" ? match.homeTeam : match.awayTeam;
+      addEvent(
+        "POINT",
+        `+1 ${teamName} (Set ${set.setNumber}: ${set.homePoints}–${set.awayPoints})` +
+        (rotationHappened ? " – receiving team rotated." : ""),
+        team,
+        {
+          prevServing,
+          rotationHappened,
+          homePoints: set.homePoints,
+          awayPoints: set.awayPoints
+        }
+      );
+
+      saveMatchToStorage();
+      renderAll();
+    }
+
+    function callTimeout(team) {
+      if (!match || match.status === "finished") return;
+      if (team === "home") {
+        if (match.homeTimeouts >= 2) {
+          alert("Team A already used 2 timeouts this set.");
+          return;
+        }
+        match.homeTimeouts++;
+      } else {
+        if (match.awayTimeouts >= 2) {
+          alert("Team B already used 2 timeouts this set.");
+          return;
+        }
+        match.awayTimeouts++;
+      }
+      const teamName = team === "home" ? match.homeTeam : match.awayTeam;
+      addEvent("TIMEOUT", `Timeout by ${teamName}`, team);
+      startTimeoutTimer(team);
+      saveMatchToStorage();
+      renderAll();
+    }
+
+    function substitutePlayer(team) {
+      if (!match || match.status === "finished") return;
+
+      const roster = team === "home" ? match.homeRoster : match.awayRoster;
+      const courtKey = team === "home" ? "homeCourt" : "awayCourt";
+      const baseKey = team === "home" ? "homeBaseRotation" : "awayBaseRotation";
+      const subsKey = team === "home" ? "homeSubsUsed" : "awaySubsUsed";
+      const maxSubs = match.maxSubsPerSet || 6;
+
+      const currentCourt = match[courtKey] || [];
+      const onCourt = currentCourt.filter(Boolean);
+
+      if ((match[subsKey] || 0) >= maxSubs) {
+        alert("No substitutions remaining this set.");
+        return;
+      }
+
+      const outStr = prompt(`Choose OUT (on court): ${onCourt.join(", ")}`);
+      if (!outStr) return;
+      const outNum = outStr.trim();
+      if (!onCourt.includes(outNum)) {
+        alert("Player is not on court.");
+        return;
+      }
+
+      const bench = (roster || []).filter(p => p && !onCourt.includes(p) || p === outNum); // allow return of same player
+      const inStr = prompt(`Choose IN (bench): ${bench.join(", ")}`);
+      if (!inStr) return;
+      const inNum = inStr.trim();
+      if (!bench.includes(inNum)) {
+        alert("Player not eligible to come in.");
+        return;
+      }
+
+      // Apply swap in both court and base rotation to preserve order
+      const baseArr = match[baseKey];
+      const courtArr = match[courtKey];
+      const baseIdx = baseArr.indexOf(outNum);
+      const courtIdx = courtArr.indexOf(outNum);
+
+      if (baseIdx === -1 || courtIdx === -1) {
+        alert("Could not find player on court/rotation.");
+        return;
+      }
+
+      baseArr[baseIdx] = inNum;
+      courtArr[courtIdx] = inNum;
+      match[subsKey] = (match[subsKey] || 0) + 1;
+
+      addEvent("SUB", `Sub ${team === "home" ? match.homeTeam : match.awayTeam}: OUT #${outNum}, IN #${inNum}`, team, {
+        out: outNum,
+        in: inNum,
+        subsUsed: match[subsKey]
+      });
+
+      updateCurrentCourt(team);
+      saveMatchToStorage();
+      renderAll();
+    }
+
+    function card(team, color) {
+      if (!match || match.status === "finished") return;
+      const teamName = team === "home" ? match.homeTeam : match.awayTeam;
+      const label = color === "yellow" ? "Yellow card" : "Red card";
+      const num = prompt("Enter player number (leave blank for team/coach):", "");
+      const target = num && num.trim() ? `#${num.trim()}` : "(team/coach)";
+      addEvent("CARD", `${label} – ${teamName} ${target}`, team, { playerNumber: num && num.trim() ? num.trim() : null });
+      saveMatchToStorage();
+      renderAll();
+    }
+
+    function undoLast() {
+      if (!match || !match.events.length) return;
+      const last = match.events.pop();
+
+      const set = match.sets[match.sets.length - 1];
+
+      if (last.type === "POINT") {
+        // revert score
+        if (last.team === "home") {
+          set.homePoints = Math.max(0, set.homePoints - 1);
+        } else {
+          set.awayPoints = Math.max(0, set.awayPoints - 1);
+        }
+        // revert serving and rotation if there was a side-out
+        if (last.rotationHappened) {
+          // revert rotation: reverse of rotateBaseOnce
+          const team = last.team;
+          const baseKey = team === "home" ? "homeBaseRotation" : "awayBaseRotation";
+          const arr = match[baseKey];
+          if (arr && arr.length === 6) {
+            // reverse rotation of rotateBaseOnce (counter-clockwise)
+            arr.unshift(arr.pop());
+            updateCurrentCourt(team);
+          }
+          match.serving = last.prevServing;
+          // Re-evaluate courts after serve changes so libero in/out is correct
+          updateCurrentCourt("home");
+          updateCurrentCourt("away");
+        }
+      } else if (last.type === "TIMEOUT") {
+        if (last.team === "home") {
+          match.homeTimeouts = Math.max(0, match.homeTimeouts - 1);
+        } else {
+          match.awayTimeouts = Math.max(0, match.awayTimeouts - 1);
+        }
+        // cancel timeout timer if it was active
+        if (timeoutTimerInterval) clearInterval(timeoutTimerInterval);
+        match.timeoutTeam = null;
+        match.timeoutEnd = null;
+        document.getElementById("timeoutTimer").textContent = "--";
+      } else if (last.type === "CARD") {
+        // no scoreboard change, just remove from log
+      } else if (last.type === "END_SET" || last.type === "END_MATCH") {
+        // For simplicity, do not fully undo set/match end here
+        alert("Undo for end of set/match is not fully supported. Last event removed from log only.");
+      }
+
+      saveMatchToStorage();
+      renderAll();
+    }
+
+    function endCurrentSet() {
+      if (!match) return;
+      const set = match.sets[match.sets.length - 1];
+      const h = set.homePoints;
+      const a = set.awayPoints;
+      if (h === a) {
+        alert("Set cannot end tied.");
+        return;
+      }
+      const isTieBreak = (match.currentSet === 5);
+      const target = isTieBreak ? 15 : 25;
+      const max = Math.max(h, a);
+      const diff = Math.abs(h - a);
+
+      if (max < target || diff < 2) {
+        alert(`Set cannot end yet. Need at least ${target} points and a 2-point lead.`);
+        return;
+      }
+
+      set.winner = h > a ? "home" : "away";
+      if (set.winner === "home") match.homeSetsWon++;
+      else match.awaySetsWon++;
+
+      addEvent("END_SET", `End of set ${set.setNumber}: ${match.homeTeam} ${h} – ${a} ${match.awayTeam}`);
+
+      const needed = Math.ceil(match.bestOf / 2); // 3 in best of 5
+      if (match.homeSetsWon >= needed || match.awaySetsWon >= needed || match.currentSet >= match.bestOf) {
+        match.status = "finished";
+        match.matchEndTime = new Date().toISOString();
+        addEvent("END_MATCH", `Match finished: ${match.homeTeam} ${match.homeSetsWon} - ${match.awaySetsWon} ${match.awayTeam}`);
+        if (matchTimerInterval) clearInterval(matchTimerInterval);
+        saveMatchToStorage();
+        renderAll();
+        showMatchSummary();
+        return;
+      }
+
+      match.currentSet++;
+      match.homeTimeouts = 0;
+      match.awayTimeouts = 0;
+      match.homeSubsUsed = 0;
+      match.awaySubsUsed = 0;
+      match.sets.push({
+        setNumber: match.currentSet,
+        homePoints: 0,
+        awayPoints: 0,
+        winner: null
+      });
+
+      // Alternate first server each set based on initial choice
+      const first = match.firstServer || "home";
+      const alternate = first === "home" ? "away" : "home";
+      match.serving = (match.currentSet % 2 === 1) ? first : alternate;
+
+      // Ask to confirm or re-enter lineups before the next set starts
+      confirmLineupsForNextSet();
+
+      saveMatchToStorage();
+      renderAll();
+    }
+
+    function endMatchManually() {
+      if (!match) return;
+      if (!confirm("End match now?")) return;
+      match.status = "finished";
+      match.matchEndTime = new Date().toISOString();
+      addEvent("END_MATCH", "Match marked as finished manually.");
+      if (matchTimerInterval) clearInterval(matchTimerInterval);
+      saveMatchToStorage();
+      renderAll();
+      showMatchSummary();
+    }
+
+    // ---- Timers ----
+    function formatDuration(ms) {
+      if (ms < 0) ms = 0;
+      const totalSeconds = Math.floor(ms / 1000);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      if (hours > 0) {
+        return (
+          String(hours).padStart(2, "0") +
+          ":" +
+          String(minutes).padStart(2, "0") +
+          ":" +
+          String(seconds).padStart(2, "0")
+        );
+      }
+      return (
+        String(minutes).padStart(2, "0") +
+        ":" +
+        String(seconds).padStart(2, "0")
+      );
+    }
+
+    function startMatchTimer() {
+      if (matchTimerInterval) clearInterval(matchTimerInterval);
+      matchTimerInterval = setInterval(updateMatchTimerDisplay, 1000);
+      updateMatchTimerDisplay();
+    }
+
+    function updateMatchTimerDisplay() {
+      const el = document.getElementById("matchTimer");
+      if (!match || !match.matchStartTime) {
+        el.textContent = "00:00";
+        return;
+      }
+      const start = new Date(match.matchStartTime).getTime();
+      const end = match.matchEndTime ? new Date(match.matchEndTime).getTime() : Date.now();
+      const diff = end - start;
+      el.textContent = formatDuration(diff);
+    }
+
+    function startTimeoutTimer(team) {
+      if (timeoutTimerInterval) clearInterval(timeoutTimerInterval);
+      const now = Date.now();
+      match.timeoutTeam = team;
+      match.timeoutEnd = now + 30 * 1000; // 30 seconds
+      timeoutTimerInterval = setInterval(updateTimeoutTimerDisplay, 200);
+      updateTimeoutTimerDisplay();
+    }
+
+    function updateTimeoutTimerDisplay() {
+      const el = document.getElementById("timeoutTimer");
+      if (!match || !match.timeoutEnd || !match.timeoutTeam) {
+        el.textContent = "--";
+        return;
+      }
+      const remaining = match.timeoutEnd - Date.now();
+      if (remaining <= 0) {
+        el.textContent = "00:00";
+        clearInterval(timeoutTimerInterval);
+        timeoutTimerInterval = null;
+        match.timeoutTeam = null;
+        match.timeoutEnd = null;
+        saveMatchToStorage();
+        return;
+      }
+      el.textContent = "00:" + String(Math.floor(remaining / 1000)).padStart(2, "0");
+    }
+
+    function updateTimers() {
+      if (match && match.matchStartTime && !match.matchEndTime) {
+        startMatchTimer();
+      } else {
+        updateMatchTimerDisplay();
+      }
+      if (match && match.timeoutEnd && match.timeoutEnd > Date.now() && match.timeoutTeam) {
+        if (timeoutTimerInterval) clearInterval(timeoutTimerInterval);
+        timeoutTimerInterval = setInterval(updateTimeoutTimerDisplay, 200);
+      } else {
+        updateTimeoutTimerDisplay();
+      }
+    }
+
+    function formatMatchSummaryDuration() {
+      if (!match || !match.matchStartTime || !match.matchEndTime) return "--";
+      const start = new Date(match.matchStartTime).getTime();
+      const end = new Date(match.matchEndTime).getTime();
+      return formatDuration(end - start);
+    }
+
+    function showMatchSummary() {
+      if (!match || match.status !== "finished") return;
+      const overlay = document.getElementById("matchSummaryOverlay");
+      const resEl = document.getElementById("summaryResult");
+      const setsEl = document.getElementById("summarySets");
+      const durEl = document.getElementById("summaryDuration");
+      const idEl = document.getElementById("summaryMatchId");
+      const cardsEl = document.getElementById("summaryCards");
+
+      const setLines = match.sets
+        .map(s => `Set ${s.setNumber}: ${match.homeTeam} ${s.homePoints} - ${s.awayPoints} ${match.awayTeam}`)
+        .join("<br>");
+
+      const cards = (match.events || []).filter(ev => ev.type === "CARD");
+      const cardLines = cards.length
+        ? cards.map(c => {
+            const teamName = c.team === "home" ? match.homeTeam : c.team === "away" ? match.awayTeam : "";
+            const pn = c.playerNumber ? ` #${c.playerNumber}` : "";
+            return `${c.text.replace("ƒ?\"", "-")} (${teamName}${pn})`;
+          }).join("<br>")
+        : "None";
+
+      resEl.innerHTML = `${match.homeTeam} ${match.homeSetsWon} - ${match.awaySetsWon} ${match.awayTeam}`;
+      setsEl.innerHTML = setLines;
+      durEl.textContent = formatMatchSummaryDuration();
+      idEl.textContent = `Match ID: ${match.id || "-"}`;
+      cardsEl.innerHTML = cardLines;
+
+      overlay.classList.remove("hidden");
+    }
+
+    function hideMatchSummary() {
+      const overlay = document.getElementById("matchSummaryOverlay");
+      overlay.classList.add("hidden");
+    }
+
+    // ---- Rendering ----
+    function renderLog() {
+      const list = document.getElementById("logList");
+      list.innerHTML = "";
+      if (!match) return;
+      match.events.forEach(ev => {
+        const li = document.createElement("li");
+        li.className = "log-item";
+        const t = new Date(ev.time);
+        const ts = t.toLocaleTimeString("en-IE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        li.innerHTML = `<span class="time">[${ts}]</span> <strong>S${ev.setNumber}</strong> – ${ev.text}`;
+        list.appendChild(li);
+      });
+      list.scrollTop = list.scrollHeight;
+    }
+
+    function renderRotation() {
+      const homeGrid = document.getElementById("homeRotationGrid");
+      const awayGrid = document.getElementById("awayRotationGrid");
+      homeGrid.innerHTML = "";
+      awayGrid.innerHTML = "";
+
+      if (!match) return;
+
+      // Volleyball positions mapping:
+      // 0=Pos1 (back-right/server), 1=Pos2 (front-right), 2=Pos3 (front-middle),
+      // 3=Pos4 (front-left), 4=Pos5 (back-left), 5=Pos6 (back-middle)
+      // Front row indices: 1,2,3; Back row indices: 4,5,0
+      const homeCourt = match.homeCourt || [];
+      const awayCourt = match.awayCourt || [];
+      const homeLibero = match.homeLibero;
+      const awayLibero = match.awayLibero;
+      const homeLiberoPos = match.homeLiberoPos;
+      const awayLiberoPos = match.awayLiberoPos;
+
+      // Server is position 1 (back-right) => index 0 in this mapping
+      const homeServerIdx = 0;
+      const awayServerIdx = 0;
+      const homeServing = match.serving === "home";
+      const awayServing = match.serving === "away";
+
+      // Render Team A (top row: front 4-3-2, bottom: back 5-6-1)
+      const displayOrder = [3, 2, 1, 4, 5, 0];
+      displayOrder.forEach(i => {
+        const el = document.createElement("div");
+        el.className = "rot-pos";
+        el.textContent = homeCourt[i] || "-";
+        if (homeLibero && homeLiberoPos === i) el.classList.add("libero-active");
+        if (homeServing && i === homeServerIdx) el.classList.add("server-active");
+        homeGrid.appendChild(el);
+      });
+
+      // Render Team B
+      displayOrder.forEach(i => {
+        const el = document.createElement("div");
+        el.className = "rot-pos";
+        el.textContent = awayCourt[i] || "-";
+        if (awayLibero && awayLiberoPos === i) el.classList.add("libero-active");
+        if (awayServing && i === awayServerIdx) el.classList.add("server-active");
+        awayGrid.appendChild(el);
+      });
+
+      document.getElementById("homeLiberoLabel").textContent = homeLibero || "-";
+      document.getElementById("awayLiberoLabel").textContent = awayLibero || "-";
+    }
+
+    function renderSquads() {
+      const homeEl = document.getElementById("homeSquadText");
+      const awayEl = document.getElementById("awaySquadText");
+      if (!match) return;
+      // Sort numerically
+      const sortNums = arr => (arr || []).slice().sort((a,b) => parseInt(a,10) - parseInt(b,10));
+      const homeSorted = sortNums(match.homeRoster);
+      const awaySorted = sortNums(match.awayRoster);
+      const homeNames = match.homePlayerNames || {};
+      const awayNames = match.awayPlayerNames || {};
+
+      const makeList = (sorted, names, teamKey) => {
+        if (!sorted.length) return "<em>–</em>";
+        return sorted.map(num => {
+          const nm = names[num] ? ` — ${names[num]}` : "";
+          return `<span class="squad-slot" data-team="${teamKey}" data-num="${num}">#${num}${nm}</span>`;
+        }).join(", ");
+      };
+
+      homeEl.innerHTML = makeList(homeSorted, homeNames, "home");
+      awayEl.innerHTML = makeList(awaySorted, awayNames, "away");
+    }
+
+    function renderAll() {
+      if (!match) return;
+      document.getElementById("homeNameDisplay").textContent = match.homeTeam;
+      document.getElementById("awayNameDisplay").textContent = match.awayTeam;
+
+      const currentSet = match.sets[match.sets.length - 1];
+      document.getElementById("homeScore").textContent = currentSet.homePoints;
+      document.getElementById("awayScore").textContent = currentSet.awayPoints;
+      document.getElementById("homeSets").textContent = match.homeSetsWon;
+      document.getElementById("awaySets").textContent = match.awaySetsWon;
+      document.getElementById("currentSetLabel").textContent = currentSet.setNumber;
+
+      document.getElementById("homeTimeouts").textContent = match.homeTimeouts;
+      document.getElementById("awayTimeouts").textContent = match.awayTimeouts;
+      document.getElementById("homeSubs").textContent = match.homeSubsUsed;
+      document.getElementById("awaySubs").textContent = match.awaySubsUsed;
+
+      document.getElementById("matchStatusTag").textContent =
+        "Status: " + (match.status === "finished" ? "Finished" : "Live");
+
+      document.getElementById("homeCard").classList.toggle("serving", match.serving === "home");
+      document.getElementById("awayCard").classList.toggle("serving", match.serving === "away");
+
+      // Sync first serve radio if present
+      const fs = match.firstServer || "home";
+      const radio = document.querySelector(`input[name="firstServe"][value="${fs}"]`);
+      if (radio) radio.checked = true;
+
+      // Set score summary
+      const summaryEl = document.getElementById("setSummaryText");
+      if (summaryEl) {
+        const summary = (match.sets || [])
+          .map(s => `S${s.setNumber}: ${match.homeTeam} ${s.homePoints} - ${s.awayPoints} ${match.awayTeam}`)
+          .join(" | ");
+        summaryEl.textContent = summary || "--";
+      }
+
+      renderRotation();
+      renderLog();
+      renderSquads();
+      updateTimers();
+    }
+
+    // ---- Button wiring ----
+    document.getElementById("btnNewMatch").addEventListener("click", () => {
+      if (match && match.events.length && !confirm("This will reset the current match. Continue?")) return;
+      createNewMatch();
+    });
+
+    document.getElementById("btnLoadLast").addEventListener("click", () => {
+      const stored = loadMatchFromStorage();
+      if (!stored) {
+        alert("No saved match found.");
+        return;
+      }
+      match = stored;
+      document.getElementById("homeNameInput").value = match.homeTeam;
+      document.getElementById("awayNameInput").value = match.awayTeam;
+      document.getElementById("matchIdInput").value = match.id;
+      renderAll();
+    });
+
+    document.getElementById("btnLineups").addEventListener("click", () => setLineups());
+
+    document.getElementById("btnPointHome").addEventListener("click", () => addPoint("home"));
+    document.getElementById("btnPointAway").addEventListener("click", () => addPoint("away"));
+
+    document.getElementById("btnTimeoutHome").addEventListener("click", () => callTimeout("home"));
+    document.getElementById("btnTimeoutAway").addEventListener("click", () => callTimeout("away"));
+
+    document.getElementById("btnCardHomeYellow").addEventListener("click", () => card("home", "yellow"));
+    document.getElementById("btnCardHomeRed").addEventListener("click", () => card("home", "red"));
+    document.getElementById("btnCardAwayYellow").addEventListener("click", () => card("away", "yellow"));
+    document.getElementById("btnCardAwayRed").addEventListener("click", () => card("away", "red"));
+
+    document.getElementById("btnUndo").addEventListener("click", () => undoLast());
+    document.getElementById("btnEndSet").addEventListener("click", () => endCurrentSet());
+    document.getElementById("btnEndMatch").addEventListener("click", () => endMatchManually());
+    document.getElementById("btnSubHome").addEventListener("click", () => substitutePlayer("home"));
+    document.getElementById("btnSubAway").addEventListener("click", () => substitutePlayer("away"));
+    document.getElementById("btnCloseSummary").addEventListener("click", () => hideMatchSummary());
+
+    document.querySelectorAll(".squad-list span").forEach(el => {
+      if (el.classList.contains("squad-slot")) return;
+      el.addEventListener("click", (e) => {
+        const target = e.target;
+        const team = target.dataset.team;
+        const num = target.dataset.num;
+        promptPlayerName(team, num);
+      });
+    });
+
+    document.addEventListener("click", (e) => {
+      const slot = e.target.closest(".squad-slot");
+      if (slot) {
+        const team = slot.dataset.team;
+        const num = slot.dataset.num;
+        promptPlayerName(team, num);
+      }
+    });
+
+    // ---- Init ----
+    (function init() {
+      const stored = loadMatchFromStorage();
+      if (stored) {
+        match = stored;
+        // Backfill firstServer if missing from old saves
+        match.firstServer = match.firstServer || match.serving || "home";
+        // Backfill starting six snapshots if missing
+        if (!match.homeStartingSix || match.homeStartingSix.length !== 6) {
+          match.homeStartingSix = (match.homeBaseRotation || []).slice();
+        }
+        if (!match.awayStartingSix || match.awayStartingSix.length !== 6) {
+          match.awayStartingSix = (match.awayBaseRotation || []).slice();
+        }
+      document.getElementById("homeNameInput").value = match.homeTeam;
+      document.getElementById("awayNameInput").value = match.awayTeam;
+      document.getElementById("matchIdInput").value = match.id;
+      const fs = match.firstServer || "home";
+      const radio = document.querySelector(`input[name="firstServe"][value="${fs}"]`);
+      if (radio) radio.checked = true;
+    } else {
+      createNewMatch();
+    }
+    renderAll();
+  })();
+  </script>
+</body>
+</html>
