@@ -1,0 +1,112 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Volleyball Tactical Board Pro v3</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="top-bar">
+<h1><img src="logo.png" alt="IVI logo" class="brand-logo"><span>IVI</span> TACTICAL BOARD</h1>
+<div class="top-controls">
+<select id="fmtSel" onchange="setFormation(this.value)">
+<option value="5-1">5-1 System</option>
+<option value="4-2">4-2 System</option>
+<option value="6-2">6-2 System</option>
+</select>
+</div>
+</div>
+<div class="tool-row">
+<button id="tSelect" class="active" onclick="setTool('select')">Select</button>
+<button id="tArrow" onclick="setTool('arrow')">Arrow</button>
+<button id="tCurve" onclick="setTool('curve')">Curve</button>
+<button id="tDraw" onclick="setTool('draw')">Draw</button>
+<div class="sep"></div>
+<button onclick="undo()">Undo</button>
+<button onclick="redo()">Redo</button>
+<button onclick="clearDraw()">Clear</button>
+<button onclick="resetAll()">Reset</button>
+<div class="sep"></div>
+<button id="ballBtn" onclick="toggleBall()">Ball</button>
+<button id="zoneNumBtn" class="active" onclick="toggleZoneNumbers()">Zone #</button>
+<button id="presentBtn" onclick="togglePresentationMode()">Present</button>
+</div>
+<div class="main">
+<div class="panel">
+
+<h3>Rotation</h3>
+<div class="rot-nav">
+<button onclick="rotPrev()">Prev</button>
+<div class="rot-display" id="rotDisp">R1</div>
+<button onclick="rotNext()">Next</button>
+</div>
+<div class="btn-grid" id="rotBtns">
+<button class="active" onclick="setRot(1)">R1</button>
+<button onclick="setRot(2)">R2</button>
+<button onclick="setRot(3)">R3</button>
+<button onclick="setRot(4)">R4</button>
+<button onclick="setRot(5)">R5</button>
+<button onclick="setRot(6)">R6</button>
+</div>
+
+<h3>Situation</h3>
+<div class="phase-row">
+<div class="phase-btn active" id="phServe" onclick="setPhase('serving')">SERVING</div>
+<div class="phase-btn" id="phRecv" onclick="setPhase('receive')">RECEIVE</div>
+<div class="phase-btn" id="phDef" onclick="setPhase('defense')">DEFENSE</div>
+</div>
+
+<h3>Defense vs Attack From</h3>
+<div class="btn-col" id="defPanel">
+<button onclick="setDefVs('z4')">vs Zone 4 (Outside)</button>
+<button onclick="setDefVs('z3')">vs Zone 3 (Middle)</button>
+<button onclick="setDefVs('z2')">vs Zone 2 (Opposite)</button>
+<button onclick="setDefVs('pipe')">vs Pipe (Back Row)</button>
+</div>
+
+<h3>Color</h3>
+<div class="color-row">
+<div class="cdot active" style="background:#f59e0b" onclick="pickColor('#f59e0b',this)"></div>
+<div class="cdot" style="background:#ef4444" onclick="pickColor('#ef4444',this)"></div>
+<div class="cdot" style="background:#3b82f6" onclick="pickColor('#3b82f6',this)"></div>
+<div class="cdot" style="background:#22c55e" onclick="pickColor('#22c55e',this)"></div>
+<div class="cdot" style="background:#fff" onclick="pickColor('#ffffff',this)"></div>
+<div class="cdot" style="background:#a855f7" onclick="pickColor('#a855f7',this)"></div>
+</div>
+<h3>Width</h3>
+<div class="slider-row">
+<input type="range" min="1" max="8" value="3" id="lwSlider" oninput="lineW=+this.value;document.getElementById('lwVal').textContent=this.value" onchange="commitHistory()">
+<span id="lwVal">3</span>
+</div>
+
+<h3>Legend</h3>
+<div class="legend">
+<i style="background:#2563eb"></i>S - Setter<br>
+<i style="background:#ef4444"></i>OH - Outside Hitter<br>
+<i style="background:#f59e0b"></i>OPP - Opposite<br>
+<i style="background:#22c55e"></i>MB - Middle Blocker<br>
+<i style="background:#a855f7"></i>L - Libero<br>
+<i style="background:#607080"></i>S2 - Setter 2 (4-2/6-2)<br>
+<br>
+<strong>Dbl-click</strong> player -> number<br>
+<strong>Right-click</strong> player -> menu<br>
+<strong>Dbl-click</strong> in curve mode -> finish
+</div>
+</div>
+<div class="canvas-wrap"><canvas id="C"></canvas></div>
+</div>
+<div class="status-bar">
+<span id="sL">5-1 | R1 | Serving | Base</span>
+<span id="sR">Select mode</span>
+</div>
+<div class="ctx-menu" id="ctxMenu">
+<div onclick="ctxNum()">Set Number</div>
+<div onclick="ctxRole()">Change Role</div>
+<div onclick="ctxDel()">Remove</div>
+</div>
+<button id="presentCloseBtn" class="present-close" onclick="togglePresentationMode(false)" aria-label="Exit presentation">X</button>
+
+<script src="script.js"></script>
+</body>
+</html>
