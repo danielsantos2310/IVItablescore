@@ -1,5 +1,3 @@
-const STORAGE_KEY = "ivi_current_match_v3";
-// Always start fresh on reload
 try { localStorage.removeItem(STORAGE_KEY); } catch (e) { }
 
 function loadMatchFromStorage() {
