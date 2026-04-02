@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>IVI - Team Register</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="styles.CSS">
+</head>
+<body>
+  <div class="app">
+    <header class="no-print">
+      <div class="match-setup">
+        <div class="register-meta">
+          <div>
+            <label>Match ID</label>
+            <input type="text" id="regMatchId" value="IVI-TEST-001" />
+          </div>
+          <div>
+            <label>Date</label>
+            <input type="date" id="regDate" />
+          </div>
+          <div>
+            <label>Venue</label>
+            <input type="text" id="regVenue" value="International Volleyball Ireland Court" />
+          </div>
+        </div>
+        <button class="btn secondary" id="btnViewPositions">View Positions</button>
+        <button class="btn secondary" onclick="window.print()">Print / Export PDF</button>
+      </div>
+      <datalist id="teamNameList">
+        <option value="Caramel Dogs"></option>
+        <option value="Rolling Thunder"></option>
+        <option value="G/G"></option>
+        <option value="MSVC Rats"></option>
+        <option value="Fireball"></option>
+        <option value="Nata"></option>
+        <option value="Next Level"></option>
+        <option value="MSVC Beavers"></option>
+        <option value="UCD"></option>
+        <option value="IVI Dinosaurs"></option>
+        <option value="IVI Vixen"></option>
+      </datalist>
+    </header>
+
+    <section class="register-layout">
+      <div class="register-card">
+        <h3>Team A Register</h3>
+        <div class="register-meta">
+          <div>
+            <label>Team Name</label>
+            <input type="text" id="regTeamA" value="Team A" list="teamNameList" />
+          </div>
+          <div>
+            <label>Coach / Captain</label>
+            <input type="text" id="regCoachA" />
+          </div>
+          <div>
+            <label>Assistant</label>
+            <input type="text" id="regAssistA" />
+          </div>
+        </div>
+        <table class="roster-table" id="rosterTableA">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Notes (C=Captain)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+          </tbody>
+        </table>
+        <div class="rotation-start">
+          <div class="rotation-label">Starting Rotation (6)</div>
+          <div class="rotation-grid-mini" id="rotationGridA">
+            <input />
+            <input />
+            <input />
+            <input />
+            <input />
+            <input />
+          </div>
+          <div class="rotation-validation" id="rotationValidationA"></div>
+          <div class="rotation-actions">
+            <button class="btn secondary rotation-lock" data-team="A">Starting Set Position</button>
+          </div>
+        </div>
+        <div class="signature-block">
+          <div class="signature-label">Coach/Captain Signature</div>
+          <canvas class="signature-pad" id="sigA" width="560" height="120"></canvas>
+          <div class="signature-actions">
+            <button class="btn secondary signature-clear" data-target="sigA">Clear</button>
+            <button class="btn secondary signature-confirm" data-target="sigA">Confirm Signature</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="register-card">
+        <h3>Team B Register</h3>
+        <div class="register-meta">
+          <div>
+            <label>Team Name</label>
+            <input type="text" id="regTeamB" value="Team B" list="teamNameList" />
+          </div>
+          <div>
+            <label>Coach / Captain</label>
+            <input type="text" id="regCoachB" />
+          </div>
+          <div>
+            <label>Assistant</label>
+            <input type="text" id="regAssistB" />
+          </div>
+        </div>
+        <table class="roster-table" id="rosterTableB">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Notes (C=Captain)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+            <tr><td><input /></td><td><input /></td><td><input /></td></tr>
+          </tbody>
+        </table>
+        <div class="rotation-start">
+          <div class="rotation-label">Starting Rotation (6)</div>
+          <div class="rotation-grid-mini" id="rotationGridB">
+            <input />
+            <input />
+            <input />
+            <input />
+            <input />
+            <input />
+          </div>
+          <div class="rotation-validation" id="rotationValidationB"></div>
+          <div class="rotation-actions">
+            <button class="btn secondary rotation-lock" data-team="B">Starting Set Position</button>
+          </div>
+        </div>
+        <div class="signature-block">
+          <div class="signature-label">Coach/Captain Signature</div>
+          <canvas class="signature-pad" id="sigB" width="560" height="120"></canvas>
+          <div class="signature-actions">
+            <button class="btn secondary signature-clear" data-target="sigB">Clear</button>
+            <button class="btn secondary signature-confirm" data-target="sigB">Confirm Signature</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="summary-overlay hidden no-print" id="positionsModal">
+    <div class="summary-panel positions-panel">
+      <div class="summary-header">
+        <div class="summary-title">Starting Positions</div>
+        <button class="btn secondary" id="btnClosePositions">Close</button>
+      </div>
+      <div class="register-layout">
+        <div class="register-card">
+          <div class="modal-team-head">
+            <img id="positionsLogoA" class="modal-team-logo hidden" alt="" />
+            <h3 id="positionsTeamALabel">Team A</h3>
+          </div>
+          <div class="rotation-grid-mini rotation-grid-readonly" id="positionsGridA"></div>
+          <div class="rotation-validation modal-validation" id="positionsValidationA"></div>
+          <div class="rotation-modal-actions">
+            <button class="btn secondary" id="btnRotateA">Rotate Team A</button>
+            <button class="btn secondary" id="btnSubA">Sub Team A</button>
+            <button class="btn secondary" id="btnNewSetA">New Set A</button>
+          </div>
+        </div>
+        <div class="register-card">
+          <div class="modal-team-head">
+            <img id="positionsLogoB" class="modal-team-logo hidden" alt="" />
+            <h3 id="positionsTeamBLabel">Team B</h3>
+          </div>
+          <div class="rotation-grid-mini rotation-grid-readonly" id="positionsGridB"></div>
+          <div class="rotation-validation modal-validation" id="positionsValidationB"></div>
+          <div class="rotation-modal-actions">
+            <button class="btn secondary" id="btnRotateB">Rotate Team B</button>
+            <button class="btn secondary" id="btnSubB">Sub Team B</button>
+            <button class="btn secondary" id="btnNewSetB">New Set B</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function setupSignatureCanvas(canvas) {
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      ctx.lineWidth = 2;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "#111";
+
+      let drawing = false;
+
+      const getPos = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        if (e.touches && e.touches.length) {
+          return {
+            x: e.touches[0].clientX - rect.left,
+            y: e.touches[0].clientY - rect.top
+          };
+        }
+        return {
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top
+        };
+      };
+
+      const start = (e) => {
+        drawing = true;
+        const p = getPos(e);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+      };
+
+      const move = (e) => {
+        if (!drawing) return;
+        const p = getPos(e);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+      };
+
+      const end = () => {
+        drawing = false;
+        ctx.closePath();
+      };
+
+      canvas.addEventListener("mousedown", start);
+      canvas.addEventListener("mousemove", move);
+      window.addEventListener("mouseup", end);
+      canvas.addEventListener("touchstart", (e) => { e.preventDefault(); start(e); }, { passive: false });
+      canvas.addEventListener("touchmove", (e) => { e.preventDefault(); move(e); }, { passive: false });
+      canvas.addEventListener("touchend", (e) => { e.preventDefault(); end(e); }, { passive: false });
+    }
+
+    setupSignatureCanvas(document.getElementById("sigA"));
+    setupSignatureCanvas(document.getElementById("sigB"));
+
+    document.querySelectorAll(".signature-clear").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.dataset.target;
+        const canvas = document.getElementById(id);
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        canvas.classList.remove("locked");
+      });
+    });
+
+    document.querySelectorAll(".signature-confirm").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.dataset.target;
+        const canvas = document.getElementById(id);
+        if (!canvas) return;
+        const isLocked = canvas.classList.toggle("locked");
+        btn.textContent = isLocked ? "Unlock Signature" : "Confirm Signature";
+      });
+    });
+
+    function addTeamNameToList(value) {
+      const list = document.getElementById("teamNameList");
+      if (!list) return;
+      const name = (value || "").trim();
+      if (!name) return;
+      const exists = Array.from(list.options).some(opt => opt.value.toLowerCase() === name.toLowerCase());
+      if (exists) return;
+      const opt = document.createElement("option");
+      opt.value = name;
+      list.appendChild(opt);
+    }
+
+    const TEAM_LOGOS = {
+      "caramel dogs": "caramel-dogs.png",
+      "rolling thunder": "Rolling-Thunders.jpg",
+      "g/g": "gg.jpg",
+      "msvc rats": "MSVC-Rats.png",
+      "fireball": "fireball.jpeg",
+      "nata": "nata.jpeg",
+      "next level": "nextlevel.jpeg",
+      "msvc beavers": "MSVC-Beavers.png",
+      "ucd": "ucd.jpg",
+      "ivi dinosaurs": "Brasão - PNG.png",
+      "ivi vixen": "Brasão - PNG.png"
+    };
+    const TEAM_LOGO_ALIASES = {
+      "gg": "g/g",
+      "g g": "g/g",
+      "g-g": "g/g",
+      "rolling thunders": "rolling thunder",
+      "rolling-thunder": "rolling thunder",
+      "nextlevel": "next level",
+      "next-level": "next level",
+      "msvc-rats": "msvc rats",
+      "msvc-beavers": "msvc beavers",
+      "ivi dino": "ivi dinosaurs",
+      "ivi dinosaur": "ivi dinosaurs",
+      "dinosaurs": "ivi dinosaurs",
+      "vixen": "ivi vixen",
+      "ivi vixens": "ivi vixen"
+    };
+
+    function normalizeTeamName(name) {
+      return String(name || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[_-]+/g, " ")
+        .replace(/\s+/g, " ");
+    }
+
+    function setModalTeamLogo(imgId, teamName) {
+      const img = document.getElementById(imgId);
+      if (!img) return;
+      const key = normalizeTeamName(teamName);
+      const alias = TEAM_LOGO_ALIASES[key] || key;
+      const src = TEAM_LOGOS[alias] || "";
+      if (!src) {
+        img.classList.add("hidden");
+        img.removeAttribute("src");
+        img.alt = "";
+        return;
+      }
+      img.src = src;
+      img.alt = `${teamName} logo`;
+      img.classList.remove("hidden");
+      img.onerror = () => {
+        img.classList.add("hidden");
+      };
+    }
+
+    const regTeamA = document.getElementById("regTeamA");
+    const regTeamB = document.getElementById("regTeamB");
+    if (regTeamA) {
+      regTeamA.addEventListener("change", (e) => addTeamNameToList(e.target.value));
+    }
+    if (regTeamB) {
+      regTeamB.addEventListener("change", (e) => addTeamNameToList(e.target.value));
+    }
+
+    document.querySelectorAll(".rotation-lock").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const section = btn.closest(".rotation-start");
+        if (!section) return;
+        section.querySelectorAll(".rotation-grid-mini input").forEach(inp => {
+          inp.disabled = true;
+          inp.classList.add("locked");
+        });
+        btn.textContent = "Starting Locked";
+        btn.disabled = true;
+      });
+    });
+
+    let modalRotationA = ["-", "-", "-", "-", "-", "-"];
+    let modalRotationB = ["-", "-", "-", "-", "-", "-"];
+    let modalRotationAStart = ["-", "-", "-", "-", "-", "-"];
+    let modalRotationBStart = ["-", "-", "-", "-", "-", "-"];
+    let modalEditA = false;
+    let modalEditB = false;
+    let modalNewSetA = false;
+    let modalNewSetB = false;
+
+    function getRosterRows(teamKey) {
+      const table = document.getElementById(teamKey === "A" ? "rosterTableA" : "rosterTableB");
+      if (!table) return [];
+      return Array.from(table.querySelectorAll("tbody tr"));
+    }
+
+    function getRosterNumbers(teamKey) {
+      return getRosterRows(teamKey)
+        .map((row) => row.querySelector("td:first-child input")?.value?.trim() || "")
+        .filter(Boolean);
+    }
+
+    function getCaptainNumber(teamKey) {
+      const rows = getRosterRows(teamKey);
+      const captainRow = rows.find((row) => {
+        const note = row.querySelector("td:nth-child(3) input")?.value?.trim() || "";
+        return /\b(c|cap|captain)\b/i.test(note);
+      });
+      return captainRow?.querySelector("td:first-child input")?.value?.trim() || "";
+    }
+
+    function setValidation(targetId, values, teamKey) {
+      const el = document.getElementById(targetId);
+      if (!el) return;
+      const roster = getRosterNumbers(teamKey);
+      const rosterSet = new Set(roster);
+      const used = values.filter((v) => v && v !== "-");
+      const invalid = used.filter((n) => !rosterSet.has(n));
+      const unique = new Set();
+      const duplicates = [];
+      used.forEach((n) => {
+        if (unique.has(n) && !duplicates.includes(n)) duplicates.push(n);
+        unique.add(n);
+      });
+      const emptyCount = values.filter((v) => !v || v === "-").length;
+
+      const msgs = [];
+      if (!roster.length) msgs.push("Add roster numbers first.");
+      if (invalid.length) msgs.push(`Not in roster: ${invalid.join(", ")}`);
+      if (duplicates.length) msgs.push(`Duplicated: ${duplicates.join(", ")}`);
+      if (emptyCount) msgs.push(`${emptyCount} empty position(s).`);
+
+      if (!msgs.length) {
+        el.textContent = "Rotation looks valid.";
+        el.className = "rotation-validation ok";
+      } else {
+        el.textContent = msgs.join(" ");
+        el.className = "rotation-validation warn";
+      }
+    }
+
+    function collectRotationValues(gridId) {
+      const grid = document.getElementById(gridId);
+      if (!grid) return ["-", "-", "-", "-", "-", "-"];
+      return Array.from(grid.querySelectorAll("input")).map(inp => inp.value.trim() || "-");
+    }
+
+    function renderPositionGrid(targetId, values, isEditable, teamKey) {
+      const el = document.getElementById(targetId);
+      if (!el) return;
+      const labels = ["P4", "P3", "P2", "P5", "P6", "P1"];
+      const captainNum = getCaptainNumber(teamKey);
+      el.innerHTML = values
+        .map((rawValue, i) => {
+          const displayValue = (!isEditable && captainNum && rawValue === captainNum)
+            ? `${rawValue}C`
+            : (rawValue === "-" ? "" : rawValue);
+          return (
+          `<div>
+            <span class="cell-pos-label">${labels[i]}</span>
+            <input class="cell-player-input" data-index="${i}" value="${displayValue}" ${isEditable ? "" : "disabled"} />
+          </div>`
+          );
+        })
+        .join("");
+      setValidation(teamKey === "A" ? "positionsValidationA" : "positionsValidationB", values, teamKey);
+    }
+
+    function openPositionsModal() {
+      const teamA = document.getElementById("regTeamA")?.value || "Team A";
+      const teamB = document.getElementById("regTeamB")?.value || "Team B";
+      document.getElementById("positionsTeamALabel").textContent = teamA;
+      document.getElementById("positionsTeamBLabel").textContent = teamB;
+      setModalTeamLogo("positionsLogoA", teamA);
+      setModalTeamLogo("positionsLogoB", teamB);
+      modalRotationAStart = collectRotationValues("rotationGridA");
+      modalRotationBStart = collectRotationValues("rotationGridB");
+      modalRotationA = modalRotationAStart.slice();
+      modalRotationB = modalRotationBStart.slice();
+      modalEditA = false;
+      modalEditB = false;
+      modalNewSetA = false;
+      modalNewSetB = false;
+      document.getElementById("btnSubA").textContent = "Sub Team A";
+      document.getElementById("btnSubB").textContent = "Sub Team B";
+      document.getElementById("btnNewSetA").textContent = "New Set A";
+      document.getElementById("btnNewSetB").textContent = "New Set B";
+      renderPositionGrid("positionsGridA", modalRotationA, modalEditA, "A");
+      renderPositionGrid("positionsGridB", modalRotationB, modalEditB, "B");
+      document.getElementById("positionsModal").classList.remove("hidden");
+    }
+
+    function closePositionsModal() {
+      document.getElementById("positionsModal").classList.add("hidden");
+    }
+
+    document.getElementById("btnViewPositions").addEventListener("click", openPositionsModal);
+    document.getElementById("btnClosePositions").addEventListener("click", closePositionsModal);
+    function rotateVolleyballClockwise(values) {
+      if (!Array.isArray(values) || values.length !== 6) return values;
+      // Grid order: [P4, P3, P2, P5, P6, P1]
+      // Clockwise side-out: P1->P6->P5->P4->P3->P2->P1
+      return [values[3], values[0], values[1], values[4], values[5], values[2]];
+    }
+
+    document.getElementById("btnRotateA").addEventListener("click", () => {
+      modalRotationA = rotateVolleyballClockwise(modalRotationA);
+      renderPositionGrid("positionsGridA", modalRotationA, modalEditA, "A");
+    });
+    document.getElementById("btnRotateB").addEventListener("click", () => {
+      modalRotationB = rotateVolleyballClockwise(modalRotationB);
+      renderPositionGrid("positionsGridB", modalRotationB, modalEditB, "B");
+    });
+    document.getElementById("btnSubA").addEventListener("click", () => {
+      modalEditA = !modalEditA;
+      document.getElementById("btnSubA").textContent = modalEditA ? "Save Sub A" : "Sub Team A";
+      renderPositionGrid("positionsGridA", modalRotationA, modalEditA, "A");
+    });
+    document.getElementById("btnSubB").addEventListener("click", () => {
+      modalEditB = !modalEditB;
+      document.getElementById("btnSubB").textContent = modalEditB ? "Save Sub B" : "Sub Team B";
+      renderPositionGrid("positionsGridB", modalRotationB, modalEditB, "B");
+    });
+    document.getElementById("btnNewSetA").addEventListener("click", () => {
+      if (!modalNewSetA) {
+        modalRotationA = ["-", "-", "-", "-", "-", "-"];
+        modalEditA = true;
+        modalNewSetA = true;
+        document.getElementById("btnSubA").textContent = "Save Sub A";
+        document.getElementById("btnNewSetA").textContent = "Save New Set A";
+      } else {
+        modalRotationAStart = modalRotationA.slice();
+        modalEditA = false;
+        modalNewSetA = false;
+        document.getElementById("btnSubA").textContent = "Sub Team A";
+        document.getElementById("btnNewSetA").textContent = "New Set A";
+      }
+      renderPositionGrid("positionsGridA", modalRotationA, modalEditA, "A");
+    });
+    document.getElementById("btnNewSetB").addEventListener("click", () => {
+      if (!modalNewSetB) {
+        modalRotationB = ["-", "-", "-", "-", "-", "-"];
+        modalEditB = true;
+        modalNewSetB = true;
+        document.getElementById("btnSubB").textContent = "Save Sub B";
+        document.getElementById("btnNewSetB").textContent = "Save New Set B";
+      } else {
+        modalRotationBStart = modalRotationB.slice();
+        modalEditB = false;
+        modalNewSetB = false;
+        document.getElementById("btnSubB").textContent = "Sub Team B";
+        document.getElementById("btnNewSetB").textContent = "New Set B";
+      }
+      renderPositionGrid("positionsGridB", modalRotationB, modalEditB, "B");
+    });
+
+    document.getElementById("positionsGridA").addEventListener("input", (e) => {
+      const input = e.target.closest(".cell-player-input");
+      if (!input) return;
+      const idx = Number(input.dataset.index);
+      modalRotationA[idx] = (input.value || "").trim() || "-";
+      setValidation("positionsValidationA", modalRotationA, "A");
+    });
+    document.getElementById("positionsGridB").addEventListener("input", (e) => {
+      const input = e.target.closest(".cell-player-input");
+      if (!input) return;
+      const idx = Number(input.dataset.index);
+      modalRotationB[idx] = (input.value || "").trim() || "-";
+      setValidation("positionsValidationB", modalRotationB, "B");
+    });
+
+    function validateRegisterRotation(teamKey) {
+      const values = collectRotationValues(teamKey === "A" ? "rotationGridA" : "rotationGridB");
+      setValidation(teamKey === "A" ? "rotationValidationA" : "rotationValidationB", values, teamKey);
+    }
+
+    document.getElementById("rotationGridA").addEventListener("input", () => validateRegisterRotation("A"));
+    document.getElementById("rotationGridB").addEventListener("input", () => validateRegisterRotation("B"));
+    document.getElementById("rosterTableA").addEventListener("input", () => {
+      validateRegisterRotation("A");
+      setValidation("positionsValidationA", modalRotationA, "A");
+    });
+    document.getElementById("rosterTableB").addEventListener("input", () => {
+      validateRegisterRotation("B");
+      setValidation("positionsValidationB", modalRotationB, "B");
+    });
+    validateRegisterRotation("A");
+    validateRegisterRotation("B");
+  </script>
+</body>
+</html>

@@ -1,112 +1,246 @@
-﻿<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Volleyball Tactical Board Pro v3</title>
-<link rel="stylesheet" href="styles.css">
+  <meta charset="utf-8" />
+  <title>IVI – Official Volleyball Score</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="styles.CSS">
 </head>
+
 <body>
-<div class="top-bar">
-<h1><img src="logo.png" alt="IVI logo" class="brand-logo"><span>IVI</span> TACTICAL BOARD</h1>
-<div class="top-controls">
-<select id="fmtSel" onchange="setFormation(this.value)">
-<option value="5-1">5-1 System</option>
-<option value="4-2">4-2 System</option>
-<option value="6-2">6-2 System</option>
-</select>
-</div>
-</div>
-<div class="tool-row">
-<button id="tSelect" class="active" onclick="setTool('select')">Select</button>
-<button id="tArrow" onclick="setTool('arrow')">Arrow</button>
-<button id="tCurve" onclick="setTool('curve')">Curve</button>
-<button id="tDraw" onclick="setTool('draw')">Draw</button>
-<div class="sep"></div>
-<button onclick="undo()">Undo</button>
-<button onclick="redo()">Redo</button>
-<button onclick="clearDraw()">Clear</button>
-<button onclick="resetAll()">Reset</button>
-<div class="sep"></div>
-<button id="ballBtn" onclick="toggleBall()">Ball</button>
-<button id="zoneNumBtn" class="active" onclick="toggleZoneNumbers()">Zone #</button>
-<button id="presentBtn" onclick="togglePresentationMode()">Present</button>
-</div>
-<div class="main">
-<div class="panel">
+  <div class="app">
+    <header class="no-print">
+      <div class="match-setup">
+        <div>
+          <label>Team A</label>
+          <input type="text" id="homeNameInput" value="Team A" list="teamNameList" />
+        </div>
+        <div>
+          <label>Team B</label>
+          <input type="text" id="awayNameInput" value="Team B" list="teamNameList" />
+        </div>
+        <div>
+          <label>Match ID</label>
+          <input type="text" id="matchIdInput" value="IVI-TEST-001" />
+        </div>
+        <div class="serve-choice">
+          <label>First Serve</label>
+          <div class="serve-options">
+            <label><input type="radio" name="firstServe" value="home" checked /> <span id="firstServeHomeLabel">Team
+                A</span></label>
+            <label><input type="radio" name="firstServe" value="away" /> <span id="firstServeAwayLabel">Team
+                B</span></label>
+          </div>
+        </div>
+        <button class="btn secondary" id="btnOpenRegister">Open Register</button>
+        <button class="btn secondary" id="btnNewMatch">New / Reset Match</button>
+        <!-- Load Saved Match removed -->
+        <!-- Set Lineups & Libero hidden for now -->
+        <button class="btn secondary hidden" id="btnLineups">Set Lineups & Libero</button>
+      </div>
+      <datalist id="teamNameList">
+        <option value="Caramel Dogs"></option>
+        <option value="Rolling Thunder"></option>
+        <option value="G/G"></option>
+        <option value="MSVC Rats"></option>
+        <option value="Fireball"></option>
+        <option value="Nata"></option>
+        <option value="Next Level"></option>
+        <option value="MSVC Beavers"></option>
+        <option value="UCD"></option>
+        <option value="IVI Dinosaurs"></option>
+        <option value="IVI Vixen"></option>
+      </datalist>
+    </header>
 
-<h3>Rotation</h3>
-<div class="rot-nav">
-<button onclick="rotPrev()">Prev</button>
-<div class="rot-display" id="rotDisp">R1</div>
-<button onclick="rotNext()">Next</button>
-</div>
-<div class="btn-grid" id="rotBtns">
-<button class="active" onclick="setRot(1)">R1</button>
-<button onclick="setRot(2)">R2</button>
-<button onclick="setRot(3)">R3</button>
-<button onclick="setRot(4)">R4</button>
-<button onclick="setRot(5)">R5</button>
-<button onclick="setRot(6)">R6</button>
-</div>
+    <div class="layout">
+      <!-- LEFT COLUMN: SCORE & CONTROLS -->
+      <section class="score-area">
+        <div class="teams-row">
+          <!-- Team A -->
+          <div class="team-card" id="homeCard">
+            <img class="serve-indicator" src="mikasa.png" alt="Serving" />
+            <img class="team-logo" id="homeLogoDisplay" alt="" />
+            <div class="team-name" id="homeNameDisplay">Team A</div>
+            <div class="set-wins">Sets: <span id="homeSets">0</span></div>
+            <div class="main-score" id="homeScore">0</div>
+          </div>
 
-<h3>Situation</h3>
-<div class="phase-row">
-<div class="phase-btn active" id="phServe" onclick="setPhase('serving')">SERVING</div>
-<div class="phase-btn" id="phRecv" onclick="setPhase('receive')">RECEIVE</div>
-<div class="phase-btn" id="phDef" onclick="setPhase('defense')">DEFENSE</div>
-</div>
+          <!-- Set info -->
+          <div class="set-info">
+            <span>Current Set</span>
+            <strong id="currentSetLabel">1</strong>
+          </div>
 
-<h3>Defense vs Attack From</h3>
-<div class="btn-col" id="defPanel">
-<button onclick="setDefVs('z4')">vs Zone 4 (Outside)</button>
-<button onclick="setDefVs('z3')">vs Zone 3 (Middle)</button>
-<button onclick="setDefVs('z2')">vs Zone 2 (Opposite)</button>
-<button onclick="setDefVs('pipe')">vs Pipe (Back Row)</button>
-</div>
+          <!-- Team B -->
+          <div class="team-card" id="awayCard">
+            <img class="serve-indicator" src="mikasa.png" alt="Serving" />
+            <img class="team-logo" id="awayLogoDisplay" alt="" />
+            <div class="team-name" id="awayNameDisplay">Team B</div>
+            <div class="set-wins">Sets: <span id="awaySets">0</span></div>
+            <div class="main-score" id="awayScore">0</div>
+          </div>
+        </div>
 
-<h3>Color</h3>
-<div class="color-row">
-<div class="cdot active" style="background:#f59e0b" onclick="pickColor('#f59e0b',this)"></div>
-<div class="cdot" style="background:#ef4444" onclick="pickColor('#ef4444',this)"></div>
-<div class="cdot" style="background:#3b82f6" onclick="pickColor('#3b82f6',this)"></div>
-<div class="cdot" style="background:#22c55e" onclick="pickColor('#22c55e',this)"></div>
-<div class="cdot" style="background:#fff" onclick="pickColor('#ffffff',this)"></div>
-<div class="cdot" style="background:#a855f7" onclick="pickColor('#a855f7',this)"></div>
-</div>
-<h3>Width</h3>
-<div class="slider-row">
-<input type="range" min="1" max="8" value="3" id="lwSlider" oninput="lineW=+this.value;document.getElementById('lwVal').textContent=this.value" onchange="commitHistory()">
-<span id="lwVal">3</span>
-</div>
+        <div class="big-buttons-row">
+          <button class="btn big-btn left" id="btnPointHome">+1 Team A</button>
+          <button class="btn big-btn right" id="btnPointAway">+1 Team B</button>
+        </div>
 
-<h3>Legend</h3>
-<div class="legend">
-<i style="background:#2563eb"></i>S - Setter<br>
-<i style="background:#ef4444"></i>OH - Outside Hitter<br>
-<i style="background:#f59e0b"></i>OPP - Opposite<br>
-<i style="background:#22c55e"></i>MB - Middle Blocker<br>
-<i style="background:#a855f7"></i>L - Libero<br>
-<i style="background:#607080"></i>S2 - Setter 2 (4-2/6-2)<br>
-<br>
-<strong>Dbl-click</strong> player -> number<br>
-<strong>Right-click</strong> player -> menu<br>
-<strong>Dbl-click</strong> in curve mode -> finish
-</div>
-</div>
-<div class="canvas-wrap"><canvas id="C"></canvas></div>
-</div>
-<div class="status-bar">
-<span id="sL">5-1 | R1 | Serving | Base</span>
-<span id="sR">Select mode</span>
-</div>
-<div class="ctx-menu" id="ctxMenu">
-<div onclick="ctxNum()">Set Number</div>
-<div onclick="ctxRole()">Change Role</div>
-<div onclick="ctxDel()">Remove</div>
-</div>
-<button id="presentCloseBtn" class="present-close" onclick="togglePresentationMode(false)" aria-label="Exit presentation">X</button>
+        <div class="middle-controls no-print">
+          <button class="btn secondary" id="btnUndo">Undo Last</button>
+        </div>
 
-<script src="script.js"></script>
+        <div class="tags-row">
+          <span class="tag">Best of 5 (Sets 1-4 to 25, Set 5 to 15)</span>
+          <span class="tag">Minimum 2-point difference</span>
+          <span class="tag" id="matchStatusTag">Status: Live</span>
+        </div>
+        <div class="set-summary-row">
+          <div class="set-summary-label">Set scores</div>
+          <div class="set-summary-values" id="setSummaryText">--</div>
+        </div>
+
+        <div class="controls-area no-print">
+          <!-- Team A controls -->
+          <div class="controls-group">
+            <h3>Team A - Controls</h3>
+            <div class="timeouts-subs" id="homeTimeoutsSubs">Timeouts: <span id="homeTimeouts">0</span>/2 (current set)
+              | Subs: <span id="homeSubs">0</span>/6</div>
+            <button class="btn secondary" id="btnTimeoutHome">Timeout A</button>
+            <button class="btn secondary" id="btnCardHomeYellow">Yellow Card A</button>
+            <button class="btn secondary" id="btnCardHomeRed">Red Card A</button>
+            <button class="btn secondary hidden" id="btnSubHome">Substitution A</button>
+          </div>
+
+          <!-- Team B controls -->
+          <div class="controls-group">
+            <h3>Team B - Controls</h3>
+            <div class="timeouts-subs" id="awayTimeoutsSubs">Timeouts: <span id="awayTimeouts">0</span>/2 (current set)
+              | Subs: <span id="awaySubs">0</span>/6</div>
+            <button class="btn secondary" id="btnTimeoutAway">Timeout B</button>
+            <button class="btn secondary" id="btnCardAwayYellow">Yellow Card B</button>
+            <button class="btn secondary" id="btnCardAwayRed">Red Card B</button>
+            <button class="btn secondary hidden" id="btnSubAway">Substitution B</button>
+          </div>
+        </div>
+
+        <!-- Rotation / Lineups -->
+        <div class="rotation-wrapper no-print hidden">
+          <div class="rotation-team">
+            <h3>Team A Rotation</h3>
+            <div>Libero: <span id="homeLiberoLabel">-</span></div>
+            <div class="rotation-grid" id="homeRotationGrid"></div>
+            <div class="rotation-hint">
+              Rotation follows scoring rules: receiving team rotates when gaining serve. Libero automatically replaces
+              the chosen player in back row (except server).
+            </div>
+          </div>
+
+          <div class="rotation-team">
+            <h3>Team B Rotation</h3>
+            <div>Libero: <span id="awayLiberoLabel">-</span></div>
+            <div class="rotation-grid" id="awayRotationGrid"></div>
+            <div class="rotation-hint">
+              Rotation follows scoring rules. Libero auto in/out according to back row position.
+            </div>
+          </div>
+        </div>
+
+        <div class="middle-controls no-print">
+          <button class="btn secondary" id="btnEndSet">End Set</button>
+          <button class="btn danger" id="btnEndMatch">End Match</button>
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN: LOG + SQUADS -->
+      <section class="log-area">
+        <h2>Match Timeline</h2>
+        <div class="squad-list">
+          <div><strong id="homeSquadLabel">Team A Squad:</strong> <span id="homeSquadText">-</span></div>
+          <div><strong id="awaySquadLabel">Team B Squad:</strong> <span id="awaySquadText">-</span></div>
+        </div>
+        <ul class="log-list" id="logList"></ul>
+        <div class="sound-board no-print">
+          <h3>Soundboard</h3>
+          <div class="sound-buttons">
+            <button class="btn secondary" id="btnSfxAce">Ace Ace 🎯🏐</button>
+            <button class="btn secondary" id="btnSfxBlock">Monster Block 🧱🛑</button>
+            <button class="btn secondary" id="btnSfxBoom">Boom 🔊💥</button>
+            <button class="btn secondary" id="btnSfxBrasil">Brasil Vibe 🇧🇷</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <footer class="no-print">
+      <div class="timers">
+        <span class="timer-label">Match time:</span>
+        <span class="timer-value" id="matchTimer">00:00</span>
+        <span class="timer-label">Timeout:</span>
+        <span class="timer-value" id="timeoutTimer">--</span>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button class="btn secondary" id="btnOpenScoreboard">Open Scoreboard</button>
+        <button class="btn secondary" onclick="window.print()">Print / Export PDF</button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Match Summary Modal -->
+  <div id="matchSummaryOverlay" class="summary-overlay hidden no-print">
+    <div class="summary-panel">
+      <div class="summary-header">
+        <div>
+          <div class="summary-title">Match Summary</div>
+          <div class="summary-sub" id="summaryMatchId"></div>
+        </div>
+        <button class="btn secondary" id="btnCloseSummary">Close</button>
+      </div>
+      <div class="summary-body">
+        <div class="summary-row">
+          <div class="summary-label">Result</div>
+          <div class="summary-value" id="summaryResult"></div>
+        </div>
+        <div class="summary-row">
+          <div class="summary-label">Duration</div>
+          <div class="summary-value" id="summaryDuration"></div>
+        </div>
+        <div class="summary-row">
+          <div class="summary-label">Set Scores</div>
+          <div class="summary-value" id="summarySets"></div>
+        </div>
+        <div class="summary-row">
+          <div class="summary-label">Cards</div>
+          <div class="summary-value" id="summaryCards"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="cardEntryOverlay" class="summary-overlay hidden no-print">
+    <div class="summary-panel card-entry-panel">
+      <div class="summary-header">
+        <div>
+          <div class="summary-title" id="cardEntryTitle">Card</div>
+          <div class="summary-sub" id="cardEntryTeam">Team</div>
+        </div>
+        <button class="btn secondary" id="btnCloseCardEntry">Close</button>
+      </div>
+      <div class="card-entry-body">
+        <div id="cardEntryEmoji" class="card-entry-emoji" aria-hidden="true">🟨</div>
+        <label for="cardPlayerNumberInput" class="summary-label">Player Number</label>
+        <input type="text" id="cardPlayerNumberInput" class="card-entry-input" placeholder="e.g. 12" />
+        <div class="summary-sub">Leave blank for team/coach sanction.</div>
+        <button class="btn" id="btnConfirmCardEntry">Confirm Card</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/obs-websocket-js"></script>
+  <script src="obsClient.js"></script>
+  <script src="script.js"></script>
 </body>
+
 </html>

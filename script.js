@@ -1,1466 +1,1720 @@
-﻿// VIRTUAL COORD SYSTEM: 800Ã—880
-// Court: left=50, top=30, width=700, height=820
-// Net at y=440 (home team BELOW net: y>440)
-// Home front row ~y=510, back row ~y=700
+const STORAGE_KEY = "ivi_current_match_v3";
+// Always start fresh on reload
+try { localStorage.removeItem(STORAGE_KEY); } catch (e) { }
 
-const V = { W: 800, H: 500 };
-const CT = { l: 50, t: 30, w: 700, h: 440 };
-const NET_Y = 60;
-const ATK_LINE_DIST = 125; // 3m line distance from net in virtual units
-const HOME_ATK_Y = NET_Y + ATK_LINE_DIST; // ~565
-
-// Key y-coordinates for home team
-const NET_CLOSE = NET_Y + 25;   // right at net for blocking
-const FRONT_BASE = NET_Y + 80;  // front row base
-const ATK_LINE = HOME_ATK_Y;    // 3m attack line
-const MID_COURT = NET_Y + 230;  // middle of home court
-const BACK_BASE = NET_Y + 310;  // back row base
-const DEEP = NET_Y + 370;       // deep court
-const SERVICE = NET_Y + 400;    // service position
-
-// Key x-coordinates
-const L = 130;   // left sideline area
-const LC = 250;  // left-center
-const C = 400;   // center
-const RC = 550;  // right-center
-const R = 670;   // right sideline area
-const SET_POS_X = RC + 20; // setter target position x
-const SET_POS_Y = NET_Y + 50; // setter target near net
-
-const PLAYER_R = 28;
-
-const ROLES = {
-  S:   { color: '#2563eb', label: 'S' },
-  OH:  { color: '#ef4444', label: 'OH' },
-  OH2: { color: '#ef4444', label: 'OH' },
-  OPP: { color: '#f59e0b', label: 'OPP' },
-  MB:  { color: '#22c55e', label: 'MB' },
-  MB2: { color: '#22c55e', label: 'MB' },
-  L:   { color: '#a855f7', label: 'L' },
-  S2:  { color: '#607080', label: 'S2' },
-};
-
-// STATE
-let sx = 1, sy = 1;
-let tool = 'select', dColor = '#f59e0b', lineW = 3;
-let formation = '5-1', rot = 1, phase = 'serving';
-let recvShape = '3p', defVs = 'z4';
-let players = [], oppPlayers = [];
-let ball = null, showBall = false, showOpp = false;
-let showZoneNumbers = true;
-let drawings = [], curDraw = null;
-let drag = null, dragOff = { x: 0, y: 0 };
-let selPlayer = null;
-let curvePoints = [];
-let ctxTarget = null;
-let lineStart = null;
-let playerNumbers = {};
-let dragMoved = false;
-let undoStack = [];
-let redoStack = [];
-let isHistoryApplying = false;
-let rallyServeBy = 'us'; // 'us' or 'opp'
-let rallyState = 'pre_serve'; // 'pre_serve' or 'rally'
-let presentationMode = false;
-
-const MAX_HISTORY = 120;
-
-const canvas = document.getElementById('C');
-const ctx = canvas.getContext('2d');
-const courtLogo = new Image();
-courtLogo.src = 'logo.png';
-courtLogo.onload = () => render();
-
-function cloneState(v) {
-  if (typeof structuredClone === 'function') return structuredClone(v);
-  return JSON.parse(JSON.stringify(v));
+function loadMatchFromStorage() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error("Error reading localStorage:", e);
+    return null;
+  }
 }
 
-function getStateSnapshot() {
+function saveMatchToStorage() {
+  if (!match) return;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(match));
+}
+
+let match = null;
+let matchTimerInterval = null;
+let timeoutTimerInterval = null;
+let scoreboardWindow = null;
+let audioPanelWindow = null;
+let pendingCardEntry = null;
+const scoreboardInvert = true;
+let activeSfxKey = null;
+
+// Sync current score and sets to OBS
+function syncScoreToOBS() {
+  if (!match || !window.obsClient) return;
+  const set = match.sets[match.sets.length - 1];
+  const leftTeam = match.homeOnLeft ? 'home' : 'away';
+  const rightTeam = match.homeOnLeft ? 'away' : 'home';
+  const leftScore = leftTeam === 'home' ? set.homePoints : set.awayPoints;
+  const rightScore = rightTeam === 'home' ? set.homePoints : set.awayPoints;
+  const leftSets = leftTeam === 'home' ? match.homeSetsWon : match.awaySetsWon;
+  const rightSets = rightTeam === 'home' ? match.homeSetsWon : match.awaySetsWon;
+  window.obsClient.updateScore(leftScore, rightScore, leftSets, rightSets);
+}
+
+// Sync team names to OBS
+function syncNamesToOBS() {
+  if (!match || !window.obsClient) return;
+  const leftTeam = match.homeOnLeft ? 'home' : 'away';
+  const rightTeam = match.homeOnLeft ? 'away' : 'home';
+  const leftName = leftTeam === 'home' ? match.homeTeam : match.awayTeam;
+  const rightName = rightTeam === 'home' ? match.homeTeam : match.awayTeam;
+  window.obsClient.updateTeams(leftName, rightName);
+}
+
+function getCardEmoji(color) {
+  return color === "yellow" ? "🟨" : "🟥";
+}
+
+const SFX_TRACKS = {
+  ace: "Ace Ace.mpeg",
+  block: "Monster Block.mp3",
+  boom: "Boom.mp3",
+  brasilSil: "Vinheta Brasil Sil Sil - Globo (Anos 2000).mp3"
+};
+const SFX_LABELS = {
+  ace: "Ace Ace 🎯🏐",
+  block: "Monster Block 🧱🛑",
+  boom: "Boom 🔊💥",
+  brasilSil: "Brasil Vibe 🇧🇷"
+};
+const SFX_VISUALS = {
+  ace: { image: "aceace.png", label: "ACE ACE" },
+  block: { image: "monsterblock.png", label: "MONSTER BLOCK" },
+  boom: { image: "boom.png", label: "BOOM" }
+};
+const sfxPlayers = Object.fromEntries(
+  Object.entries(SFX_TRACKS).map(([key, src]) => [key, new Audio(src)])
+);
+Object.values(sfxPlayers).forEach(player => {
+  player.preload = "auto";
+});
+
+function setSfxButtonState(activeKey) {
+  activeSfxKey = activeKey || null;
+  const map = {
+    ace: document.getElementById("btnSfxAce"),
+    block: document.getElementById("btnSfxBlock"),
+    boom: document.getElementById("btnSfxBoom"),
+    brasilSil: document.getElementById("btnSfxBrasil")
+  };
+  Object.entries(map).forEach(([key, btn]) => {
+    if (!btn) return;
+    btn.classList.toggle("sfx-active", key === activeKey);
+  });
+  updateAudioPanelWindow();
+}
+
+function showSfxOnScoreboard(key) {
+  if (!match || !SFX_VISUALS[key]) return;
+  match.sfxNotice = {
+    key
+  };
+  const payload = getScoreboardPayload();
+  if (payload) updateScoreboardWindow(payload);
+}
+
+function stopAllSfx() {
+  Object.values(sfxPlayers).forEach(p => {
+    if (!p.paused) {
+      p.pause();
+    }
+    p.currentTime = 0;
+  });
+  if (match) {
+    match.sfxNotice = null;
+    const payload = getScoreboardPayload();
+    if (payload) updateScoreboardWindow(payload);
+  }
+  setSfxButtonState(null);
+}
+
+function toggleSfx(key) {
+  const player = sfxPlayers[key];
+  if (!player) return;
+
+  if (!player.paused && player.currentTime > 0) {
+    stopAllSfx();
+    return;
+  }
+
+  stopAllSfx();
+  player.currentTime = 0;
+  player.play().then(() => {
+    showSfxOnScoreboard(key);
+    setSfxButtonState(key);
+    player.onended = () => {
+      if (match) {
+        match.sfxNotice = null;
+        const payload = getScoreboardPayload();
+        if (payload) updateScoreboardWindow(payload);
+      }
+      setSfxButtonState(null);
+    };
+  }).catch(() => { });
+}
+
+function getSfxPayload() {
   return {
-    players,
-    oppPlayers,
-    ball,
-    showBall,
-    drawings,
-    rot,
-    phase,
-    formation,
-    recvShape,
-    defVs,
-    playerNumbers,
-    showOpp,
-    showZoneNumbers,
-    rallyServeBy,
-    rallyState,
-    tool,
-    dColor,
-    lineW,
+    type: "audio-panel:update",
+    activeKey: activeSfxKey,
+    tracks: Object.entries(SFX_TRACKS).map(([key]) => ({ key, label: SFX_LABELS[key] || key }))
   };
 }
 
-function syncUIFromState() {
-  document.getElementById('fmtSel').value = formation;
-  document.querySelectorAll('#rotBtns button').forEach((b, i) => b.classList.toggle('active', i === rot - 1));
-  document.getElementById('rotDisp').textContent = 'R' + rot;
-  document.querySelectorAll('.phase-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('ph' + (phase === 'serving' ? 'Serve' : phase === 'receive' ? 'Recv' : 'Def')).classList.add('active');
-  document.getElementById('ballBtn').classList.toggle('active', showBall);
-  document.querySelectorAll('.tool-row button[id^="t"]').forEach(b => b.classList.remove('active'));
-  const toolBtn = document.getElementById('t' + tool.charAt(0).toUpperCase() + tool.slice(1));
-  if (toolBtn) toolBtn.classList.add('active');
-  const zoneBtn = document.getElementById('zoneNumBtn');
-  if (zoneBtn) zoneBtn.classList.toggle('active', showZoneNumbers);
-  const presentBtn = document.getElementById('presentBtn');
-  if (presentBtn) presentBtn.classList.toggle('active', presentationMode);
-  canvas.style.cursor = tool === 'select' ? 'grab' : 'crosshair';
-  document.querySelectorAll('.cdot').forEach(d => d.classList.remove('active'));
-  const activeDot = document.querySelector(`.cdot[onclick*="${dColor.toLowerCase()}"]`);
-  if (activeDot) activeDot.classList.add('active');
-  document.getElementById('lwSlider').value = lineW;
-  document.getElementById('lwVal').textContent = String(lineW);
+function updateAudioPanelWindow() {
+  if (!audioPanelWindow || audioPanelWindow.closed) return;
+  audioPanelWindow.postMessage(getSfxPayload(), "*");
 }
 
-function applySnapshot(s, opts = {}) {
-  players = Array.isArray(s.players) ? s.players : [];
-  oppPlayers = Array.isArray(s.oppPlayers) ? s.oppPlayers : [];
-  ball = s.ball || null;
-  showBall = !!s.showBall;
-  drawings = Array.isArray(s.drawings) ? s.drawings : [];
-  rot = Math.min(6, Math.max(1, +s.rot || 1));
-  phase = ['serving', 'receive', 'defense'].includes(s.phase) ? s.phase : 'serving';
-  formation = ['5-1', '4-2', '6-2'].includes(s.formation) ? s.formation : '5-1';
-  recvShape = s.recvShape === '4p' ? '4p' : '3p';
-  defVs = ['z4', 'z3', 'z2', 'pipe'].includes(s.defVs) ? s.defVs : 'z4';
-  playerNumbers = s.playerNumbers && typeof s.playerNumbers === 'object' ? s.playerNumbers : {};
-  showOpp = false;
-  showZoneNumbers = s.showZoneNumbers !== undefined ? !!s.showZoneNumbers : true;
-  rallyServeBy = s.rallyServeBy === 'opp' ? 'opp' : 'us';
-  rallyState = s.rallyState === 'rally' ? 'rally' : 'pre_serve';
-  tool = s.tool || tool;
-  dColor = s.dColor || dColor;
-  lineW = Number.isFinite(+s.lineW) ? +s.lineW : lineW;
-
-  if (opts.rebuildPlayers || !players.length) {
-    buildPlayers();
-  }
-
-  syncUIFromState();
-  updateInfoBox();
-  updateFlowInfo();
-  render();
-}
-
-function commitHistory() {
-  if (isHistoryApplying) return;
-  const snap = cloneState(getStateSnapshot());
-  const last = undoStack[undoStack.length - 1];
-  if (last && JSON.stringify(last) === JSON.stringify(snap)) return;
-  undoStack.push(snap);
-  if (undoStack.length > MAX_HISTORY) undoStack.shift();
-  redoStack = [];
-}
-
-function undo() {
-  if (undoStack.length <= 1) return;
-  isHistoryApplying = true;
-  const current = undoStack.pop();
-  redoStack.push(current);
-  const prev = undoStack[undoStack.length - 1];
-  applySnapshot(cloneState(prev));
-  isHistoryApplying = false;
-}
-
-function redo() {
-  if (!redoStack.length) return;
-  isHistoryApplying = true;
-  const next = redoStack.pop();
-  undoStack.push(cloneState(next));
-  applySnapshot(cloneState(next));
-  isHistoryApplying = false;
-}
-
-// 5-1 LINEUP
-// This is the "serving order" / rotation order
-// Rotation 1: S=z1, OH=z2, MB=z3, OPP=z4, OH2=z5, MB2=z6
-// Each rotation shifts everyone one position clockwise
-
-const LINEUP_51 = ['S', 'OH', 'MB', 'OPP', 'OH2', 'MB2'];
-const LINEUP_42 = ['S', 'OH', 'MB', 'S2', 'OH2', 'MB2'];
-const LINEUP_62 = ['S', 'OH', 'MB', 'S2', 'OH2', 'MB2'];
-
-function getLineup() {
-  if (formation === '4-2') return LINEUP_42;
-  if (formation === '6-2') return LINEUP_62;
-  return LINEUP_51;
-}
-
-function getZoneRole(zone) {
-  // Given current rotation, who is in each zone?
-  const lineup = getLineup();
-  // Zone 1 = index 0, zone 2 = index 1, etc
-  // In rotation R, shift by R-1 in volleyball clockwise direction:
-  // z2->z1, z1->z6, z6->z5, z5->z4, z4->z3, z3->z2
-  const idx = (zone - 1 + (rot - 1) + 600) % 6;
-  return lineup[idx];
-}
-
-function isFrontZone(z) { return z === 2 || z === 3 || z === 4; }
-function isBackZone(z) { return z === 1 || z === 5 || z === 6; }
-
-const SERVE_51_TEMPLATES = {
-  1: { 1: [R, SERVICE], 2: [R - 35, FRONT_BASE], 3: [C, FRONT_BASE - 10], 4: [L + 45, FRONT_BASE + 10], 5: [L + 60, BACK_BASE - 10], 6: [C, BACK_BASE + 10] },
-  // R2 serving tuned to the provided diagram:
-  // OH1 serves from P1, setter shifts right, libero holds deep center, OH2/RS/MB2 stay front.
-  2: { 1: [R, SERVICE], 2: [R - 25, FRONT_BASE], 3: [C - 10, FRONT_BASE + 5], 4: [L + 65, FRONT_BASE + 5], 5: [C - 15, BACK_BASE + 30], 6: [R - 70, BACK_BASE - 45] },
-  // R3 serving tuned to the provided diagram:
-  // Libero serves from P1, setter left-back, OH1 mid-back, MB1/OH2/RS front.
-  3: { 1: [R, SERVICE], 2: [R - 70, FRONT_BASE], 3: [C - 10, FRONT_BASE + 5], 4: [L + 70, FRONT_BASE], 5: [RC - 30, BACK_BASE + 35], 6: [L + 75, BACK_BASE - 5] },
-  // R4 serving tuned to the provided diagram:
-  // RS serves from P1, S/MB/OH2 form the front line, OH1 left-back and libero center-back.
-  4: { 1: [R, SERVICE], 2: [R - 75, FRONT_BASE + 2], 3: [C, FRONT_BASE - 8], 4: [L + 70, FRONT_BASE + 6], 5: [L + 80, BACK_BASE + 5], 6: [C, BACK_BASE + 35] },
-  // R5 serving tuned to the provided diagram:
-  // OH2 serves from P1, OH1/S/MB1 front line, L+RS deep lanes.
-  5: { 1: [R, SERVICE], 2: [R - 55, FRONT_BASE + 2], 3: [C + 5, FRONT_BASE - 6], 4: [L + 70, FRONT_BASE + 2], 5: [L + 75, BACK_BASE + 15], 6: [C - 10, BACK_BASE + 15] },
-  // R6 serving tuned to the provided diagram:
-  // MB1 serves from P1, S/OH1/MB2 stay front, RS+OH2 in middle lanes.
-  6: { 1: [R, SERVICE], 2: [R - 65, FRONT_BASE + 8], 3: [C + 5, FRONT_BASE - 12], 4: [L + 75, FRONT_BASE - 10], 5: [C - 30, BACK_BASE + 22], 6: [L + 90, BACK_BASE + 5] },
+const TEAM_LOGOS = {
+  "caramel dogs": "caramel-dogs.png",
+  "rolling thunder": "Rolling-Thunders.jpg",
+  "g/g": "gg.jpg",
+  "msvc rats": "MSVC-Rats.png",
+  "fireball": "fireball.jpeg",
+  "nata": "nata.jpeg",
+  "next level": "nextlevel.jpeg",
+  "msvc beavers": "MSVC-Beavers.png",
+  "ucd": "ucd.jpg",
+  "ivi dinosaurs": "Brasão - PNG.png",
+  "ivi vixen": "Brasão - PNG.png"
 };
 
-const RECEIVE_51_TEMPLATES = {
-  // R1 receive tuned to the provided diagram:
-  // S hidden deep right, OH1 drops to pass right seam, L centered, OH2 left passer.
-  1: { 1: [R - 10, BACK_BASE + 40], 2: [R - 90, BACK_BASE - 20], 3: [C, NET_CLOSE + 20], 4: [L + 75, FRONT_BASE + 5], 5: [L + 80, BACK_BASE - 10], 6: [C, BACK_BASE + 20] },
-  // R2 receive tuned to the provided diagram:
-  // OH2 left lane, L middle lane, OH1 right lane, S + RS stack right-center, MB2 holds right-front.
-  2: { 1: [R - 65, BACK_BASE + 20], 2: [R - 18, FRONT_BASE + 20], 3: [RC, FRONT_BASE + 5], 4: [L + 70, FRONT_BASE + 35], 5: [C, BACK_BASE + 25], 6: [RC - 20, FRONT_BASE + 18] },
-  // R3 receive: MB left-front, OPP right-front, S left-inside near attack line,
-  // OH passers in zones 5/6 lanes, libero in zone 1 lane.
-  3: { 1: [R - 35, BACK_BASE + 30], 2: [R - 35, NET_CLOSE + 20], 3: [C + 30, FRONT_BASE + 18], 4: [L + 45, NET_CLOSE + 20], 5: [L + 80, FRONT_BASE + 55], 6: [C, BACK_BASE + 18] },
-  // R4 receive tuned to the provided diagram:
-  // RS stays deep right, S+MB left-front corridor, OH2 center lane, OH1+L right-back lanes.
-  4: { 1: [R - 10, BACK_BASE + 35], 2: [RC - 10, FRONT_BASE + 18], 3: [L + 65, FRONT_BASE + 12], 4: [L + 30, FRONT_BASE - 5], 5: [C + 15, BACK_BASE + 15], 6: [RC + 45, BACK_BASE + 18] },
-  // R5 receive tuned to the provided diagram:
-  // S+MB1 hold right-front, OH1/L/OH2 in passing lanes, RS deep middle-right.
-  5: { 1: [C + 40, BACK_BASE + 45], 2: [R - 18, FRONT_BASE + 10], 3: [RC, FRONT_BASE - 5], 4: [L + 75, BACK_BASE + 12], 5: [C + 10, BACK_BASE + 18], 6: [R - 65, BACK_BASE + 15] },
-  // R6 receive tuned to the provided diagram:
-  // S+MB2 front line, OH1/OH2/L pass lanes, RS deep-left lane.
-  6: { 1: [R - 65, BACK_BASE + 8], 2: [R - 45, FRONT_BASE - 5], 3: [L + 75, FRONT_BASE + 5], 4: [L + 95, BACK_BASE + 8], 5: [C + 10, BACK_BASE + 18], 6: [L + 55, BACK_BASE + 38] },
+const TEAM_LOGO_ALIASES = {
+  "gg": "g/g",
+  "g g": "g/g",
+  "g-g": "g/g",
+  "rolling thunders": "rolling thunder",
+  "rolling-thunder": "rolling thunder",
+  "nextlevel": "next level",
+  "next-level": "next level",
+  "msvc-rats": "msvc rats",
+  "msvc beavers": "msvc beavers",
+  "msvc-beavers": "msvc beavers",
+  "ivi dino": "ivi dinosaurs",
+  "ivi dinosaur": "ivi dinosaurs",
+  "dinosaurs": "ivi dinosaurs",
+  "vixen": "ivi vixen",
+  "ivi vixens": "ivi vixen"
 };
 
-function applyZoneTemplate(zm, tpl) {
-  let pos = {};
-  for (let z = 1; z <= 6; z++) {
-    const p = zm[z];
-    const t = tpl[z] || [zoneBaseX(z), isFrontZone(z) ? FRONT_BASE : BACK_BASE];
-    pos[z] = { ...p, x: t[0], y: t[1] };
+function normalizeTeamName(name) {
+  return String(name || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ");
+}
+
+function getTeamLogo(name) {
+  const key = normalizeTeamName(name);
+  const aliasKey = TEAM_LOGO_ALIASES[key] || key;
+  return TEAM_LOGOS[aliasKey] || "";
+}
+
+function applyLogo(imgEl, teamName) {
+  if (!imgEl) return;
+  const src = getTeamLogo(teamName);
+  if (!src) {
+    imgEl.classList.add("hidden");
+    imgEl.removeAttribute("src");
+    imgEl.alt = "";
+    return;
   }
-  enforceOverlapOnPositions(pos);
-  return pos;
+  imgEl.classList.remove("hidden");
+  imgEl.src = src;
+  imgEl.alt = `${teamName} logo`;
+  imgEl.onerror = () => {
+    imgEl.classList.add("hidden");
+  };
 }
 
-function calc51ServingTemplate(zm) {
-  const tpl = SERVE_51_TEMPLATES[rot] || SERVE_51_TEMPLATES[1];
-  return applyZoneTemplate(zm, tpl);
+function createNewMatch() {
+  const homeName = document.getElementById("homeNameInput").value || "Team A";
+  const awayName = document.getElementById("awayNameInput").value || "Team B";
+  const matchId = document.getElementById("matchIdInput").value || ("IVI-" + Date.now());
+  const serveChoice = document.querySelector('input[name="firstServe"]:checked')
+    ? document.querySelector('input[name="firstServe"]:checked').value
+    : "home";
+
+  if (matchTimerInterval) clearInterval(matchTimerInterval);
+  if (timeoutTimerInterval) clearInterval(timeoutTimerInterval);
+
+  match = {
+    id: matchId,
+    homeTeam: homeName,
+    awayTeam: awayName,
+    bestOf: 5,
+    status: "live", // "live" | "finished"
+    firstServer: serveChoice,
+    currentSet: 1,
+    sets: [
+      { setNumber: 1, homePoints: 0, awayPoints: 0, winner: null }
+    ],
+    homeSetsWon: 0,
+    awaySetsWon: 0,
+    homeTimeouts: 0,
+    awayTimeouts: 0,
+    serving: serveChoice || "home", // "home" | "away"
+    homeOnLeft: true,
+    events: [],
+
+    // Lineups / rotation
+    homeRoster: [],
+    awayRoster: [],
+    homeBaseRotation: [null, null, null, null, null, null],
+    awayBaseRotation: [null, null, null, null, null, null],
+    homeLibero: null,
+    awayLibero: null,
+    homeLiberoPartner: null,
+    homeLiberoPartner2: null,
+    awayLiberoPartner: null,
+    awayLiberoPartner2: null,
+    homeCourt: [null, null, null, null, null, null],
+    awayCourt: [null, null, null, null, null, null],
+    homeLiberoPos: null,
+    awayLiberoPos: null,
+    homeStartingSix: [null, null, null, null, null, null],
+    awayStartingSix: [null, null, null, null, null, null],
+    homeSubsUsed: 0,
+    awaySubsUsed: 0,
+    maxSubsPerSet: 6,
+    homePlayerNames: {},
+    awayPlayerNames: {},
+
+    // Timers
+    matchStartTime: null, // ISO string
+    matchEndTime: null,
+    timeoutTeam: null,  // "home" | "away" | null
+    timeoutEnd: null,   // timestamp ms
+    cardNotice: null,
+    sfxNotice: null
+  };
+
+  match.matchStartTime = new Date().toISOString();
+  saveMatchToStorage();
+  renderAll();
+  addEvent("SYSTEM", `New match started: ${homeName} vs ${awayName}`);
+  updateTimers();
+  syncNamesToOBS();
+  syncScoreToOBS();
 }
 
-function calc51ReceiveTemplate(zm) {
-  const tpl = RECEIVE_51_TEMPLATES[rot] || RECEIVE_51_TEMPLATES[1];
-  const pos = applyZoneTemplate(zm, tpl);
+// ---- Lineups & Rotation ----
+function syncPlayerNamesWithRoster(team) {
+  if (!match) return;
+  const rosterKey = team === "home" ? "homeRoster" : "awayRoster";
+  const namesKey = team === "home" ? "homePlayerNames" : "awayPlayerNames";
+  const roster = match[rosterKey] || [];
+  const names = match[namesKey] || {};
+  // Remove names for players no longer in roster
+  Object.keys(names).forEach(k => {
+    if (!roster.includes(k)) delete names[k];
+  });
+  match[namesKey] = names;
+}
 
-  // Optional 4-passer receive: pull OPP into passing line when possible.
-  if (recvShape === '4p') {
-    for (let z = 1; z <= 6; z++) {
-      if (zm[z].origRole === 'OPP') {
-        pos[z].y = BACK_BASE - 20;
-        if (z === 2 || z === 1) pos[z].x = R - 90;
-        else if (z === 3 || z === 6) pos[z].x = C + 70;
-        else pos[z].x = L + 90;
+function promptPlayerName(team, num) {
+  if (!match || !num) return;
+  const namesKey = team === "home" ? "homePlayerNames" : "awayPlayerNames";
+  const names = match[namesKey] || {};
+  const existing = names[num] || "";
+  const nm = prompt(`Enter name for #${num} (${team === "home" ? match.homeTeam : match.awayTeam}):`, existing);
+  if (nm === null) return;
+  const val = nm.trim();
+  if (val) {
+    names[num] = val;
+  } else {
+    delete names[num];
+  }
+  match[namesKey] = names;
+  saveMatchToStorage();
+  renderSquads();
+}
+
+function setLineups() {
+  if (!match) {
+    alert("Create or load a match first.");
+    return;
+  }
+
+  const homeRosterStr = prompt(
+    "Enter Team A players (jersey numbers, max 14, separated by commas):",
+    match.homeRoster && match.homeRoster.length ? match.homeRoster.join(",") : ""
+  );
+  if (!homeRosterStr) return;
+  const homeRoster = homeRosterStr.split(",").map(s => s.trim()).filter(s => s);
+  if (homeRoster.length > 14) {
+    alert("Maximum 14 players for Team A. Extra numbers will be ignored.");
+  }
+  match.homeRoster = homeRoster.slice(0, 14);
+
+  const awayRosterStr = prompt(
+    "Enter Team B players (jersey numbers, max 14, separated by commas):",
+    match.awayRoster && match.awayRoster.length ? match.awayRoster.join(",") : ""
+  );
+  if (!awayRosterStr) return;
+  const awayRoster = awayRosterStr.split(",").map(s => s.trim()).filter(s => s);
+  if (awayRoster.length > 14) {
+    alert("Maximum 14 players for Team B. Extra numbers will be ignored.");
+  }
+  match.awayRoster = awayRoster.slice(0, 14);
+
+  const homeStartStr = prompt(
+    "Enter Team A starting six (6 jersey numbers, separated by commas) in rotation order:",
+    match.homeBaseRotation && match.homeBaseRotation.some(x => x)
+      ? match.homeBaseRotation.join(",")
+      : (homeRoster.slice(0, 6).join(","))
+  );
+  if (!homeStartStr) return;
+  const homeStart = homeStartStr.split(",").map(s => s.trim()).filter(s => s);
+  if (homeStart.length !== 6) {
+    alert("You must enter exactly 6 numbers for Team A starting six.");
+    return;
+  }
+  match.homeBaseRotation = homeStart;
+  match.homeStartingSix = homeStart.slice();
+
+  const awayStartStr = prompt(
+    "Enter Team B starting six (6 jersey numbers, separated by commas) in rotation order:",
+    match.awayBaseRotation && match.awayBaseRotation.some(x => x)
+      ? match.awayBaseRotation.join(",")
+      : (awayRoster.slice(0, 6).join(","))
+  );
+  if (!awayStartStr) return;
+  const awayStart = awayStartStr.split(",").map(s => s.trim()).filter(s => s);
+  if (awayStart.length !== 6) {
+    alert("You must enter exactly 6 numbers for Team B starting six.");
+    return;
+  }
+  match.awayBaseRotation = awayStart;
+  match.awayStartingSix = awayStart.slice();
+
+  const homeLibero = prompt(
+    "Enter Team A libero jersey number (or leave blank if no libero):",
+    match.homeLibero || ""
+  );
+  match.homeLibero = homeLibero && homeLibero.trim() ? homeLibero.trim() : null;
+
+  const homePartner = prompt(
+    "Enter jersey number that libero replaces in back row for Team A (usually a middle):",
+    match.homeLiberoPartner || ""
+  );
+  match.homeLiberoPartner = homePartner && homePartner.trim() ? homePartner.trim() : null;
+
+  const homePartner2 = prompt(
+    "Enter SECOND jersey number libero can replace in back row for Team A (optional):",
+    match.homeLiberoPartner2 || ""
+  );
+  match.homeLiberoPartner2 = homePartner2 && homePartner2.trim() ? homePartner2.trim() : null;
+
+  const awayLibero = prompt(
+    "Enter Team B libero jersey number (or leave blank if no libero):",
+    match.awayLibero || ""
+  );
+  match.awayLibero = awayLibero && awayLibero.trim() ? awayLibero.trim() : null;
+
+  const awayPartner = prompt(
+    "Enter jersey number that libero replaces in back row for Team B:",
+    match.awayLiberoPartner || ""
+  );
+  match.awayLiberoPartner = awayPartner && awayPartner.trim() ? awayPartner.trim() : null;
+
+  const awayPartner2 = prompt(
+    "Enter SECOND jersey number libero can replace in back row for Team B (optional):",
+    match.awayLiberoPartner2 || ""
+  );
+  match.awayLiberoPartner2 = awayPartner2 && awayPartner2.trim() ? awayPartner2.trim() : null;
+
+  // After numbers are set, allow names entry (click-to-edit later as well)
+  syncPlayerNamesWithRoster("home");
+  syncPlayerNamesWithRoster("away");
+
+  updateCurrentCourt("home");
+  updateCurrentCourt("away");
+
+  saveMatchToStorage();
+  renderAll();
+  addEvent("SYSTEM", "Lineups and libero settings updated.");
+}
+
+function confirmLineupsForNextSet() {
+  if (!match) return;
+  const ok = confirm("Confirm starting players/positions for the next set?\n\nOK = keep same starters/positions (reset to starting order)\nCancel = re-enter lineups and libero");
+  if (!ok) {
+    setLineups();
+  } else {
+    // Reset rotations to the stored starting six so we don't carry over the last set's end position
+    if (match.homeStartingSix && match.homeStartingSix.length === 6) {
+      match.homeBaseRotation = match.homeStartingSix.slice();
+    }
+    if (match.awayStartingSix && match.awayStartingSix.length === 6) {
+      match.awayBaseRotation = match.awayStartingSix.slice();
+    }
+    updateCurrentCourt("home");
+    updateCurrentCourt("away");
+    saveMatchToStorage();
+    renderAll();
+  }
+}
+
+function rotateBaseOnce(team) {
+  const baseKey = team === "home" ? "homeBaseRotation" : "awayBaseRotation";
+  const arr = match[baseKey];
+  if (!arr || arr.length !== 6) return;
+  // Rotation is clockwise: 2->1, 3->2, 4->3, 5->4, 6->5, 1->6
+  arr.push(arr.shift());
+  updateCurrentCourt(team);
+}
+
+function updateCurrentCourt(team) {
+  if (!match) return;
+  const baseKey = team === "home" ? "homeBaseRotation" : "awayBaseRotation";
+  const liberoKey = team === "home" ? "homeLibero" : "awayLibero";
+  const courtKey = team === "home" ? "homeCourt" : "awayCourt";
+  const liberoPosKey = team === "home" ? "homeLiberoPos" : "awayLiberoPos";
+  const liberoPartnerKeys = team === "home"
+    ? ["homeLiberoPartner", "homeLiberoPartner2"]
+    : ["awayLiberoPartner", "awayLiberoPartner2"];
+  const base = match[baseKey] || [];
+  const liberoNum = match[liberoKey];
+  const partners = liberoPartnerKeys
+    .map(k => match[k])
+    .filter(Boolean);
+  let court = base.slice();
+  let liberoPos = null;
+
+  // Mapping: 0=Pos1 (back-right/server), 1=Pos2 (front-right), 2=Pos3 (front-middle),
+  // 3=Pos4 (front-left), 4=Pos5 (back-left), 5=Pos6 (back-middle)
+  // Front row: [1,2,3], Back row: [4,5,0]
+  const backRow = [4, 5, 0];
+  const frontRow = [1, 2, 3];
+
+  if (liberoNum && partners.length) {
+    const isServing = match.serving === team;
+
+    // Find the first partner currently in the back row (0 -> 5 -> 4 order by rotation logic).
+    for (const partner of partners) {
+      const partnerIdx = base.indexOf(partner);
+      const eligible =
+        partnerIdx !== -1 &&
+        backRow.includes(partnerIdx) &&
+        base[partnerIdx] !== liberoNum &&
+        !(partnerIdx === 0 && isServing); // do not replace server when serving
+      if (eligible) {
+        court[partnerIdx] = liberoNum;
+        liberoPos = partnerIdx;
+        break;
       }
     }
-    enforceOverlapOnPositions(pos);
   }
-  return pos;
+
+  match[courtKey] = court;
+  match[liberoPosKey] = liberoPos;
 }
 
+// ---- Events / actions ----
+function addEvent(type, text, team = null, extra = {}) {
+  if (!match) return;
+  const now = new Date();
+  const ev = {
+    type,
+    text,
+    team,
+    setNumber: match.currentSet,
+    time: now.toISOString(),
+    ...extra
+  };
+  match.events.push(ev);
+  renderLog();
+}
 
-function calcPositions() {
-  // Step 1: Determine who is in each zone
-  let zoneMap = {};
-  for (let z = 1; z <= 6; z++) {
-    let role = getZoneRole(z);
-    let actualRole = role;
+function ensureMatchTimerStarted() {
+  if (!match.matchStartTime) {
+    match.matchStartTime = new Date().toISOString();
+    startMatchTimer();
+  }
+}
 
-    // Libero replacement rule (5-1 model):
-    // - Libero replaces MB/MB2 in any back-row zone.
-    // - Exception: if MB/MB2 is in P1 while serving, MB/MB2 must serve.
-    if (formation === '5-1' && isBackZone(z) && (role === 'MB' || role === 'MB2')) {
-      const mbServingNow = (phase === 'serving' && z === 1);
-      if (!mbServingNow) actualRole = 'L';
+function addPoint(team) {
+  if (!match || match.status === "finished") {
+    alert("Match is already finished.");
+    return;
+  }
+
+  ensureMatchTimerStarted();
+
+  const set = match.sets[match.sets.length - 1];
+  const prevServing = match.serving;
+  let rotationHappened = false;
+
+  if (team === "home") {
+    set.homePoints++;
+  } else {
+    set.awayPoints++;
+  }
+
+  // Scoring logic:
+  // If serving team scores, they keep serve, no rotation.
+  // If receiving team scores, they rotate and gain serve.
+  if (team !== prevServing) {
+    // receiving team scored
+    rotationHappened = true;
+    if (team === "home") {
+      rotateBaseOnce("home");
+    } else {
+      rotateBaseOnce("away");
     }
-    // In 4-2 / 6-2: no libero in this basic model (can be added)
+    match.serving = team;
+  }
+  // Re-evaluate courts whenever serve status may change so libero in/out is correct
+  updateCurrentCourt("home");
+  updateCurrentCourt("away");
 
-    zoneMap[z] = {
-      origRole: role,
-      role: actualRole,
-      zone: z,
-      isFront: isFrontZone(z),
-      isBack: isBackZone(z),
+  const teamName = team === "home" ? match.homeTeam : match.awayTeam;
+  addEvent(
+    "POINT",
+    `+1 ${teamName} (Set ${set.setNumber}: ${set.homePoints}–${set.awayPoints})` +
+    (rotationHappened ? " – receiving team rotated." : ""),
+    team,
+    {
+      prevServing,
+      rotationHappened,
+      homePoints: set.homePoints,
+      awayPoints: set.awayPoints
+    }
+  );
+
+  saveMatchToStorage();
+  renderAll();
+  syncScoreToOBS();
+}
+
+function addPointForSide(side) {
+  if (!match) return;
+  const leftTeam = match.homeOnLeft ? "home" : "away";
+  const rightTeam = match.homeOnLeft ? "away" : "home";
+  const team = side === "left" ? leftTeam : rightTeam;
+  addPoint(team);
+}
+
+function callTimeout(team) {
+  if (!match || match.status === "finished") return;
+  if (team === "home") {
+    if (match.homeTimeouts >= 2) {
+      alert("Team A already used 2 timeouts this set.");
+      return;
+    }
+    match.homeTimeouts++;
+  } else {
+    if (match.awayTimeouts >= 2) {
+      alert("Team B already used 2 timeouts this set.");
+      return;
+    }
+    match.awayTimeouts++;
+  }
+  const teamName = team === "home" ? match.homeTeam : match.awayTeam;
+  addEvent("TIMEOUT", `Timeout by ${teamName}`, team);
+  startTimeoutTimer(team);
+  saveMatchToStorage();
+  renderAll();
+}
+
+function callTimeoutForSide(side) {
+  if (!match) return;
+  const leftTeam = match.homeOnLeft ? "home" : "away";
+  const rightTeam = match.homeOnLeft ? "away" : "home";
+  const team = side === "left" ? leftTeam : rightTeam;
+  callTimeout(team);
+}
+
+function substitutePlayer(team) {
+  if (!match || match.status === "finished") return;
+
+  const roster = team === "home" ? match.homeRoster : match.awayRoster;
+  const courtKey = team === "home" ? "homeCourt" : "awayCourt";
+  const baseKey = team === "home" ? "homeBaseRotation" : "awayBaseRotation";
+  const subsKey = team === "home" ? "homeSubsUsed" : "awaySubsUsed";
+  const maxSubs = match.maxSubsPerSet || 6;
+
+  const currentCourt = match[courtKey] || [];
+  const onCourt = currentCourt.filter(Boolean);
+
+  if ((match[subsKey] || 0) >= maxSubs) {
+    alert("No substitutions remaining this set.");
+    return;
+  }
+
+  const outStr = prompt(`Choose OUT (on court): ${onCourt.join(", ")}`);
+  if (!outStr) return;
+  const outNum = outStr.trim();
+  if (!onCourt.includes(outNum)) {
+    alert("Player is not on court.");
+    return;
+  }
+
+  const bench = (roster || []).filter(p => p && !onCourt.includes(p) || p === outNum); // allow return of same player
+  const inStr = prompt(`Choose IN (bench): ${bench.join(", ")}`);
+  if (!inStr) return;
+  const inNum = inStr.trim();
+  if (!bench.includes(inNum)) {
+    alert("Player not eligible to come in.");
+    return;
+  }
+
+  // Apply swap in both court and base rotation to preserve order
+  const baseArr = match[baseKey];
+  const courtArr = match[courtKey];
+  const baseIdx = baseArr.indexOf(outNum);
+  const courtIdx = courtArr.indexOf(outNum);
+
+  if (baseIdx === -1 || courtIdx === -1) {
+    alert("Could not find player on court/rotation.");
+    return;
+  }
+
+  baseArr[baseIdx] = inNum;
+  courtArr[courtIdx] = inNum;
+  match[subsKey] = (match[subsKey] || 0) + 1;
+
+  addEvent("SUB", `Sub ${team === "home" ? match.homeTeam : match.awayTeam}: OUT #${outNum}, IN #${inNum}`, team, {
+    out: outNum,
+    in: inNum,
+    subsUsed: match[subsKey]
+  });
+
+  updateCurrentCourt(team);
+  saveMatchToStorage();
+  renderAll();
+}
+
+function openCardEntryModal(team, color) {
+  if (!match || match.status === "finished") return;
+  pendingCardEntry = { team, color };
+  const overlay = document.getElementById("cardEntryOverlay");
+  const title = document.getElementById("cardEntryTitle");
+  const teamLabel = document.getElementById("cardEntryTeam");
+  const emoji = document.getElementById("cardEntryEmoji");
+  const input = document.getElementById("cardPlayerNumberInput");
+  const teamName = team === "home" ? match.homeTeam : match.awayTeam;
+  const label = color === "yellow" ? "Yellow Card" : "Red Card";
+  if (title) title.textContent = label;
+  if (teamLabel) teamLabel.textContent = teamName;
+  if (emoji) emoji.textContent = getCardEmoji(color);
+  if (input) {
+    input.value = "";
+    input.focus();
+    input.select();
+  }
+  overlay?.classList.remove("hidden");
+}
+
+function closeCardEntryModal() {
+  pendingCardEntry = null;
+  document.getElementById("cardEntryOverlay")?.classList.add("hidden");
+}
+
+function confirmCardEntry() {
+  if (!pendingCardEntry || !match) return;
+  const input = document.getElementById("cardPlayerNumberInput");
+  const playerNumber = input && input.value.trim() ? input.value.trim() : null;
+  card(pendingCardEntry.team, pendingCardEntry.color, playerNumber);
+  closeCardEntryModal();
+}
+
+function card(team, color, playerNumber = null) {
+  if (!match || match.status === "finished") return;
+  const teamName = team === "home" ? match.homeTeam : match.awayTeam;
+  const label = color === "yellow" ? "Yellow card" : "Red card";
+  const target = playerNumber ? `#${playerNumber}` : "(team/coach)";
+  match.cardNotice = {
+    team,
+    color,
+    playerNumber,
+    shownUntil: Date.now() + 10 * 1000
+  };
+  addEvent("CARD", `${label} - ${teamName} ${target}`, team, { color, playerNumber });
+  saveMatchToStorage();
+  renderAll();
+}
+
+function cardForSide(side, color) {
+  if (!match) return;
+  const leftTeam = match.homeOnLeft ? "home" : "away";
+  const rightTeam = match.homeOnLeft ? "away" : "home";
+  const team = side === "left" ? leftTeam : rightTeam;
+  openCardEntryModal(team, color);
+}
+
+function undoLast() {
+  if (!match || !match.events.length) return;
+  const last = match.events.pop();
+
+  const set = match.sets[match.sets.length - 1];
+
+  if (last.type === "POINT") {
+    // revert score
+    if (last.team === "home") {
+      set.homePoints = Math.max(0, set.homePoints - 1);
+    } else {
+      set.awayPoints = Math.max(0, set.awayPoints - 1);
+    }
+    // revert serving and rotation if there was a side-out
+    if (last.rotationHappened) {
+      // revert rotation: reverse of rotateBaseOnce
+      const team = last.team;
+      const baseKey = team === "home" ? "homeBaseRotation" : "awayBaseRotation";
+      const arr = match[baseKey];
+      if (arr && arr.length === 6) {
+        // reverse rotation of rotateBaseOnce (counter-clockwise)
+        arr.unshift(arr.pop());
+        updateCurrentCourt(team);
+      }
+      match.serving = last.prevServing;
+      // Re-evaluate courts after serve changes so libero in/out is correct
+      updateCurrentCourt("home");
+      updateCurrentCourt("away");
+    }
+  } else if (last.type === "TIMEOUT") {
+    if (last.team === "home") {
+      match.homeTimeouts = Math.max(0, match.homeTimeouts - 1);
+    } else {
+      match.awayTimeouts = Math.max(0, match.awayTimeouts - 1);
+    }
+    // cancel timeout timer if it was active
+    if (timeoutTimerInterval) clearInterval(timeoutTimerInterval);
+    match.timeoutTeam = null;
+    match.timeoutEnd = null;
+    document.getElementById("timeoutTimer").textContent = "--";
+  } else if (last.type === "CARD") {
+    match.cardNotice = null;
+  } else if (last.type === "END_SET" || last.type === "END_MATCH") {
+    // For simplicity, do not fully undo set/match end here
+    alert("Undo for end of set/match is not fully supported. Last event removed from log only.");
+  }
+
+  saveMatchToStorage();
+  renderAll();
+  syncScoreToOBS();
+}
+
+function endCurrentSet() {
+  if (!match) return;
+  const set = match.sets[match.sets.length - 1];
+  const h = set.homePoints;
+  const a = set.awayPoints;
+  if (h === a) {
+    alert("Set cannot end tied.");
+    return;
+  }
+  const isTieBreak = (match.currentSet === 5);
+  const target = isTieBreak ? 15 : 25;
+  const max = Math.max(h, a);
+  const diff = Math.abs(h - a);
+
+  if (max < target || diff < 2) {
+    alert(`Set cannot end yet. Need at least ${target} points and a 2-point lead.`);
+    return;
+  }
+
+  set.winner = h > a ? "home" : "away";
+  if (set.winner === "home") match.homeSetsWon++;
+  else match.awaySetsWon++;
+
+  addEvent("END_SET", `End of set ${set.setNumber}: ${match.homeTeam} ${h} – ${a} ${match.awayTeam}`);
+
+  const needed = Math.ceil(match.bestOf / 2); // 3 in best of 5
+  if (match.homeSetsWon >= needed || match.awaySetsWon >= needed || match.currentSet >= match.bestOf) {
+    match.status = "finished";
+    match.matchEndTime = new Date().toISOString();
+    addEvent("END_MATCH", `Match finished: ${match.homeTeam} ${match.homeSetsWon} - ${match.awaySetsWon} ${match.awayTeam}`);
+    if (matchTimerInterval) clearInterval(matchTimerInterval);
+    saveMatchToStorage();
+    renderAll();
+    syncScoreToOBS();
+    showMatchSummary();
+    return;
+  }
+
+  match.currentSet++;
+  match.homeTimeouts = 0;
+  match.awayTimeouts = 0;
+  match.homeSubsUsed = 0;
+  match.awaySubsUsed = 0;
+  match.sets.push({
+    setNumber: match.currentSet,
+    homePoints: 0,
+    awayPoints: 0,
+    winner: null
+  });
+
+  // Alternate first server each set based on initial choice
+  const first = match.firstServer || "home";
+  const alternate = first === "home" ? "away" : "home";
+  match.serving = (match.currentSet % 2 === 1) ? first : alternate;
+  match.homeOnLeft = !match.homeOnLeft;
+
+  // Ask to confirm or re-enter lineups before the next set starts
+  confirmLineupsForNextSet();
+
+  saveMatchToStorage();
+  renderAll();
+  syncScoreToOBS();
+  syncNamesToOBS();
+}
+
+function endMatchManually() {
+  if (!match) return;
+  if (!confirm("End match now?")) return;
+  match.status = "finished";
+  match.matchEndTime = new Date().toISOString();
+  addEvent("END_MATCH", "Match marked as finished manually.");
+  if (matchTimerInterval) clearInterval(matchTimerInterval);
+  saveMatchToStorage();
+  renderAll();
+  showMatchSummary();
+}
+
+// ---- Timers ----
+function formatDuration(ms) {
+  if (ms < 0) ms = 0;
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) {
+    return (
+      String(hours).padStart(2, "0") +
+      ":" +
+      String(minutes).padStart(2, "0") +
+      ":" +
+      String(seconds).padStart(2, "0")
+    );
+  }
+  return (
+    String(minutes).padStart(2, "0") +
+    ":" +
+    String(seconds).padStart(2, "0")
+  );
+}
+
+function startMatchTimer() {
+  if (matchTimerInterval) clearInterval(matchTimerInterval);
+  matchTimerInterval = setInterval(updateMatchTimerDisplay, 1000);
+  updateMatchTimerDisplay();
+}
+
+function updateMatchTimerDisplay() {
+  const el = document.getElementById("matchTimer");
+  if (!match || !match.matchStartTime) {
+    el.textContent = "00:00";
+    return;
+  }
+  const start = new Date(match.matchStartTime).getTime();
+  const end = match.matchEndTime ? new Date(match.matchEndTime).getTime() : Date.now();
+  const diff = end - start;
+  el.textContent = formatDuration(diff);
+  const payload = getScoreboardPayload();
+  if (payload) updateScoreboardWindow(payload);
+}
+
+function startTimeoutTimer(team) {
+  if (timeoutTimerInterval) clearInterval(timeoutTimerInterval);
+  const now = Date.now();
+  match.timeoutTeam = team;
+  match.timeoutEnd = now + 30 * 1000; // 30 seconds
+  timeoutTimerInterval = setInterval(updateTimeoutTimerDisplay, 200);
+  updateTimeoutTimerDisplay();
+}
+
+function updateTimeoutTimerDisplay() {
+  const el = document.getElementById("timeoutTimer");
+  if (!match || !match.timeoutEnd || !match.timeoutTeam) {
+    el.textContent = "--";
+    const payload = getScoreboardPayload();
+    if (payload) updateScoreboardWindow(payload);
+    return;
+  }
+  const remaining = match.timeoutEnd - Date.now();
+  if (remaining <= 0) {
+    el.textContent = "00:00";
+    clearInterval(timeoutTimerInterval);
+    timeoutTimerInterval = null;
+    match.timeoutTeam = null;
+    match.timeoutEnd = null;
+    saveMatchToStorage();
+    const payload = getScoreboardPayload();
+    if (payload) updateScoreboardWindow(payload);
+    return;
+  }
+  el.textContent = "00:" + String(Math.floor(remaining / 1000)).padStart(2, "0");
+  const payload = getScoreboardPayload();
+  if (payload) updateScoreboardWindow(payload);
+}
+
+function updateTimers() {
+  if (match && match.matchStartTime && !match.matchEndTime) {
+    startMatchTimer();
+  } else {
+    updateMatchTimerDisplay();
+  }
+  if (match && match.timeoutEnd && match.timeoutEnd > Date.now() && match.timeoutTeam) {
+    if (timeoutTimerInterval) clearInterval(timeoutTimerInterval);
+    timeoutTimerInterval = setInterval(updateTimeoutTimerDisplay, 200);
+  } else {
+    updateTimeoutTimerDisplay();
+  }
+}
+
+function formatMatchSummaryDuration() {
+  if (!match || !match.matchStartTime || !match.matchEndTime) return "--";
+  const start = new Date(match.matchStartTime).getTime();
+  const end = new Date(match.matchEndTime).getTime();
+  return formatDuration(end - start);
+}
+
+function showMatchSummary() {
+  if (!match || match.status !== "finished") return;
+  const overlay = document.getElementById("matchSummaryOverlay");
+  const resEl = document.getElementById("summaryResult");
+  const setsEl = document.getElementById("summarySets");
+  const durEl = document.getElementById("summaryDuration");
+  const idEl = document.getElementById("summaryMatchId");
+  const cardsEl = document.getElementById("summaryCards");
+
+  const setLines = match.sets
+    .map(s => `Set ${s.setNumber}: ${match.homeTeam} ${s.homePoints} - ${s.awayPoints} ${match.awayTeam}`)
+    .join("<br>");
+
+  const cards = (match.events || []).filter(ev => ev.type === "CARD");
+  const cardLines = cards.length
+    ? cards.map(c => {
+      const teamName = c.team === "home" ? match.homeTeam : c.team === "away" ? match.awayTeam : "";
+      const pn = c.playerNumber ? ` #${c.playerNumber}` : "";
+      return `${c.text} (${teamName}${pn})`;
+    }).join("<br>")
+    : "None";
+
+  resEl.innerHTML = `${match.homeTeam} ${match.homeSetsWon} - ${match.awaySetsWon} ${match.awayTeam}`;
+  setsEl.innerHTML = setLines;
+  durEl.textContent = formatMatchSummaryDuration();
+  idEl.textContent = `Match ID: ${match.id || "-"}`;
+  cardsEl.innerHTML = cardLines;
+
+  overlay.classList.remove("hidden");
+}
+
+function hideMatchSummary() {
+  const overlay = document.getElementById("matchSummaryOverlay");
+  overlay.classList.add("hidden");
+}
+
+// ---- Rendering ----
+function renderLog() {
+  const list = document.getElementById("logList");
+  list.innerHTML = "";
+  if (!match) return;
+  match.events.forEach(ev => {
+    const li = document.createElement("li");
+    li.className = "log-item";
+    const t = new Date(ev.time);
+    const ts = t.toLocaleTimeString("en-IE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    li.innerHTML = `<span class="time">[${ts}]</span> <strong>S${ev.setNumber}</strong> – ${ev.text}`;
+    list.appendChild(li);
+  });
+  list.scrollTop = list.scrollHeight;
+}
+
+function renderRotation() {
+  const homeGrid = document.getElementById("homeRotationGrid");
+  const awayGrid = document.getElementById("awayRotationGrid");
+  homeGrid.innerHTML = "";
+  awayGrid.innerHTML = "";
+
+  if (!match) return;
+
+  // Volleyball positions mapping:
+  // 0=Pos1 (back-right/server), 1=Pos2 (front-right), 2=Pos3 (front-middle),
+  // 3=Pos4 (front-left), 4=Pos5 (back-left), 5=Pos6 (back-middle)
+  // Front row indices: 1,2,3; Back row indices: 4,5,0
+  const homeCourt = match.homeCourt || [];
+  const awayCourt = match.awayCourt || [];
+  const homeLibero = match.homeLibero;
+  const awayLibero = match.awayLibero;
+  const homeLiberoPos = match.homeLiberoPos;
+  const awayLiberoPos = match.awayLiberoPos;
+
+  // Server is position 1 (back-right) => index 0 in this mapping
+  const homeServerIdx = 0;
+  const awayServerIdx = 0;
+  const homeServing = match.serving === "home";
+  const awayServing = match.serving === "away";
+
+  // Render Team A (top row: front 4-3-2, bottom: back 5-6-1)
+  const displayOrder = [3, 2, 1, 4, 5, 0];
+  displayOrder.forEach(i => {
+    const el = document.createElement("div");
+    el.className = "rot-pos";
+    el.textContent = homeCourt[i] || "-";
+    if (homeLibero && homeLiberoPos === i) el.classList.add("libero-active");
+    if (homeServing && i === homeServerIdx) el.classList.add("server-active");
+    homeGrid.appendChild(el);
+  });
+
+  // Render Team B
+  displayOrder.forEach(i => {
+    const el = document.createElement("div");
+    el.className = "rot-pos";
+    el.textContent = awayCourt[i] || "-";
+    if (awayLibero && awayLiberoPos === i) el.classList.add("libero-active");
+    if (awayServing && i === awayServerIdx) el.classList.add("server-active");
+    awayGrid.appendChild(el);
+  });
+
+  document.getElementById("homeLiberoLabel").textContent = homeLibero || "-";
+  document.getElementById("awayLiberoLabel").textContent = awayLibero || "-";
+}
+
+function renderSquads() {
+  const homeEl = document.getElementById("homeSquadText");
+  const awayEl = document.getElementById("awaySquadText");
+  if (!match) return;
+  // Sort numerically
+  const sortNums = arr => (arr || []).slice().sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+  const homeSorted = sortNums(match.homeRoster);
+  const awaySorted = sortNums(match.awayRoster);
+  const homeNames = match.homePlayerNames || {};
+  const awayNames = match.awayPlayerNames || {};
+
+  const makeList = (sorted, names, teamKey) => {
+    if (!sorted.length) return "<em>–</em>";
+    return sorted.map(num => {
+      const nm = names[num] ? ` — ${names[num]}` : "";
+      return `<span class="squad-slot" data-team="${teamKey}" data-num="${num}">#${num}${nm}</span>`;
+    }).join(", ");
+  };
+
+  homeEl.innerHTML = makeList(homeSorted, homeNames, "home");
+  awayEl.innerHTML = makeList(awaySorted, awayNames, "away");
+}
+
+function getScoreboardPayload() {
+  if (!match) return null;
+  const currentSet = match.sets[match.sets.length - 1];
+  const leftTeam = match.homeOnLeft ? "home" : "away";
+  const rightTeam = match.homeOnLeft ? "away" : "home";
+  const leftName = leftTeam === "home" ? match.homeTeam : match.awayTeam;
+  const rightName = rightTeam === "home" ? match.homeTeam : match.awayTeam;
+  const leftScore = leftTeam === "home" ? currentSet.homePoints : currentSet.awayPoints;
+  const rightScore = rightTeam === "home" ? currentSet.homePoints : currentSet.awayPoints;
+  const leftSets = leftTeam === "home" ? match.homeSetsWon : match.awaySetsWon;
+  const rightSets = rightTeam === "home" ? match.homeSetsWon : match.awaySetsWon;
+  const leftLogo = getTeamLogo(leftName);
+  const rightLogo = getTeamLogo(rightName);
+  const setHistory = (match.sets || [])
+    .map(s => `S${s.setNumber} ${match.homeTeam} ${s.homePoints}-${s.awayPoints} ${match.awayTeam}`)
+    .join(" | ");
+  const winnerText = match.status === "finished"
+    ? `${match.homeSetsWon > match.awaySetsWon ? match.homeTeam : match.awayTeam} wins ${match.homeSetsWon}-${match.awaySetsWon}`
+    : "";
+  const now = Date.now();
+  const start = match.matchStartTime ? new Date(match.matchStartTime).getTime() : null;
+  const end = match.matchEndTime ? new Date(match.matchEndTime).getTime() : null;
+  const matchTime = start ? formatDuration((end || now) - start) : "00:00";
+  const timeoutRemaining = (match.timeoutEnd && match.timeoutTeam)
+    ? Math.max(0, Math.ceil((match.timeoutEnd - now) / 1000))
+    : 0;
+  const timeoutTeamName = match.timeoutTeam
+    ? (match.timeoutTeam === "home" ? match.homeTeam : match.awayTeam)
+    : "";
+  const timeoutTeamLogo = match.timeoutTeam ? getTeamLogo(timeoutTeamName) : "";
+  const cardRemaining = match.cardNotice
+    ? Math.max(0, Math.ceil((match.cardNotice.shownUntil - now) / 1000))
+    : 0;
+  const cardTeamName = match.cardNotice
+    ? (match.cardNotice.team === "home" ? match.homeTeam : match.awayTeam)
+    : "";
+  const cardTeamLogo = cardTeamName ? getTeamLogo(cardTeamName) : "";
+  const sfxVisual = match.sfxNotice ? (SFX_VISUALS[match.sfxNotice.key] || null) : null;
+
+  let payload = {
+    leftName,
+    rightName,
+    leftScore,
+    rightScore,
+    leftSets,
+    rightSets,
+    leftLogo,
+    rightLogo,
+    currentSet: currentSet.setNumber,
+    servingSide: match.serving === leftTeam ? "left" : "right",
+    setHistory,
+    matchId: match.id || "-",
+    matchTime,
+    winnerText,
+    timeoutRemaining,
+    timeoutTeamName,
+    timeoutTeamLogo,
+    cardRemaining,
+    cardTeamName,
+    cardTeamLogo,
+    cardPlayerNumber: match.cardNotice ? match.cardNotice.playerNumber : null,
+    cardColor: match.cardNotice ? match.cardNotice.color : null,
+    cardEmoji: match.cardNotice ? getCardEmoji(match.cardNotice.color) : "",
+    sfxActive: Boolean(sfxVisual),
+    sfxImage: sfxVisual ? sfxVisual.image : "",
+    sfxLabel: sfxVisual ? sfxVisual.label : ""
+  };
+
+  if (scoreboardInvert) {
+    payload = {
+      ...payload,
+      leftName: payload.rightName,
+      rightName: payload.leftName,
+      leftScore: payload.rightScore,
+      rightScore: payload.leftScore,
+      leftSets: payload.rightSets,
+      rightSets: payload.leftSets,
+      leftLogo: payload.rightLogo,
+      rightLogo: payload.leftLogo,
+      servingSide: payload.servingSide === "left" ? "right" : "left"
     };
   }
 
-  // Step 2: Calculate positions based on phase
-  let positions = {};
-
-  if (phase === 'serving') {
-    positions = calcServing(zoneMap);
-  } else if (phase === 'receive') {
-    positions = calcReceive(zoneMap);
-  } else if (phase === 'defense') {
-    positions = calcDefense(zoneMap);
-  }
-
-  return positions;
+  return payload;
 }
 
-function calcServing(zm) {
-  if (formation === '5-1') {
-    return calc51ServingTemplate(zm);
-  }
-
-  let pos = {};
-
-  // Base positions: legal overlap positions
-  // Zone 1 is serving (behind end line)
-  // Everyone else in base/ready position
-  // Must respect overlap rules
-
-  for (let z = 1; z <= 6; z++) {
-    const p = zm[z];
-    let x, y;
-
-    if (z === 1) {
-      x = R; y = SERVICE;
-    } else if (z === 2) {
-      // Right front
-      x = R - 40; y = FRONT_BASE;
-    } else if (z === 3) {
-      // Center front
-      x = C; y = FRONT_BASE;
-    } else if (z === 4) {
-      // Left front
-      x = L + 40; y = FRONT_BASE;
-    } else if (z === 5) {
-      // Left back
-      x = L + 40; y = BACK_BASE;
-    } else if (z === 6) {
-      // Center back
-      x = C; y = BACK_BASE;
-    }
-
-    // Setter positioning: when setter is front row, move to right side near net
-    if (p.origRole === 'S' || (formation !== '5-1' && p.origRole === 'S')) {
-      if (p.isFront && z !== 2) {
-        // Setter wants to be near zone 2/3 area but must respect overlap
-        if (z === 3) { x = RC - 30; }
-        if (z === 4) { x = LC + 30; } // can't go too far right (z3 must be between z4 and z2)
-      }
-    }
-
-    // 4-2: front setter goes to setting position
-    if (formation === '4-2') {
-      if (p.origRole === 'S' && p.isFront) {
-        if (z === 2) { x = R - 20; y = FRONT_BASE - 20; }
-        if (z === 3) { x = RC; y = FRONT_BASE - 10; }
-        if (z === 4) { x = LC + 40; } // constrained by overlap
-      }
-      if (p.origRole === 'S2' && p.isFront) {
-        if (z === 2) { x = R - 20; y = FRONT_BASE - 20; }
-        if (z === 3) { x = RC; y = FRONT_BASE - 10; }
-        if (z === 4) { x = LC + 40; }
-      }
-    }
-
-    // 6-2: back row setter will penetrate after serve, but pre-serve must be legal
-    // Just use base positions for now
-
-    pos[z] = { ...p, x, y };
-  }
-
-  return pos;
+function refreshFirstServeLabels() {
+  const homeLabel = document.getElementById("firstServeHomeLabel");
+  const awayLabel = document.getElementById("firstServeAwayLabel");
+  const homeName = (document.getElementById("homeNameInput")?.value || "").trim() || "Team A";
+  const awayName = (document.getElementById("awayNameInput")?.value || "").trim() || "Team B";
+  if (homeLabel) homeLabel.textContent = homeName;
+  if (awayLabel) awayLabel.textContent = awayName;
 }
 
-function calcReceive(zm) {
-  if (formation === '5-1') {
-    return calc51ReceiveTemplate(zm);
+function renderAll() {
+  if (!match) return;
+  refreshFirstServeLabels();
+  const leftTeam = match.homeOnLeft ? "home" : "away";
+  const rightTeam = match.homeOnLeft ? "away" : "home";
+  const leftName = leftTeam === "home" ? match.homeTeam : match.awayTeam;
+  const rightName = rightTeam === "home" ? match.homeTeam : match.awayTeam;
+
+  document.getElementById("homeNameDisplay").textContent = leftName;
+  document.getElementById("awayNameDisplay").textContent = rightName;
+  applyLogo(document.getElementById("homeLogoDisplay"), leftName);
+  applyLogo(document.getElementById("awayLogoDisplay"), rightName);
+  const homeSquadLabel = document.getElementById("homeSquadLabel");
+  const awaySquadLabel = document.getElementById("awaySquadLabel");
+  if (homeSquadLabel) homeSquadLabel.textContent = `${match.homeTeam} Squad:`;
+  if (awaySquadLabel) awaySquadLabel.textContent = `${match.awayTeam} Squad:`;
+
+  const currentSet = match.sets[match.sets.length - 1];
+  document.getElementById("homeScore").textContent =
+    leftTeam === "home" ? currentSet.homePoints : currentSet.awayPoints;
+  document.getElementById("awayScore").textContent =
+    rightTeam === "home" ? currentSet.homePoints : currentSet.awayPoints;
+  document.getElementById("homeSets").textContent =
+    leftTeam === "home" ? match.homeSetsWon : match.awaySetsWon;
+  document.getElementById("awaySets").textContent =
+    rightTeam === "home" ? match.homeSetsWon : match.awaySetsWon;
+  document.getElementById("currentSetLabel").textContent = currentSet.setNumber;
+
+  document.getElementById("homeTimeouts").textContent = match.homeTimeouts;
+  document.getElementById("awayTimeouts").textContent = match.awayTimeouts;
+  document.getElementById("homeSubs").textContent = match.homeSubsUsed;
+  document.getElementById("awaySubs").textContent = match.awaySubsUsed;
+
+  document.getElementById("matchStatusTag").textContent =
+    "Status: " + (match.status === "finished" ? "Finished" : "Live");
+
+  document.getElementById("homeCard").classList.toggle("serving", match.serving === leftTeam);
+  document.getElementById("awayCard").classList.toggle("serving", match.serving === rightTeam);
+
+  // Sync first serve radio if present
+  const fs = match.firstServer || "home";
+  const radio = document.querySelector(`input[name="firstServe"][value="${fs}"]`);
+  if (radio) radio.checked = true;
+
+  // Set score summary
+  const summaryEl = document.getElementById("setSummaryText");
+  if (summaryEl) {
+    const summary = (match.sets || [])
+      .map(s => `S${s.setNumber}: ${match.homeTeam} ${s.homePoints} - ${s.awayPoints} ${match.awayTeam}`)
+      .join(" | ");
+    summaryEl.textContent = summary || "--";
   }
 
-  let pos = {};
+  const leftBtn = document.getElementById("btnPointHome");
+  const rightBtn = document.getElementById("btnPointAway");
+  if (leftBtn) leftBtn.textContent = `+1 ${leftName}`;
+  if (rightBtn) rightBtn.textContent = `+1 ${rightName}`;
 
-  // Key principle: after serve contact, players can move freely
-  // But BEFORE contact, overlap rules apply
-  // So receive positions must be LEGAL overlap-wise AND functional
+  // Control panel labels follow court sides
+  const leftTitle = document.querySelector(".controls-group:nth-child(1) h3");
+  const rightTitle = document.querySelector(".controls-group:nth-child(2) h3");
+  if (leftTitle) leftTitle.textContent = `${leftName} - Controls`;
+  if (rightTitle) rightTitle.textContent = `${rightName} - Controls`;
 
-  // Identify key players
-  let setterZone = null, setterFront = false;
-  let mbZones = [], ohZones = [], oppZone = null, libZone = null;
+  const btnTimeoutLeft = document.getElementById("btnTimeoutHome");
+  const btnTimeoutRight = document.getElementById("btnTimeoutAway");
+  if (btnTimeoutLeft) btnTimeoutLeft.textContent = `Timeout ${leftName}`;
+  if (btnTimeoutRight) btnTimeoutRight.textContent = `Timeout ${rightName}`;
 
-  for (let z = 1; z <= 6; z++) {
-    const p = zm[z];
-    if (p.origRole === 'S') { setterZone = z; setterFront = p.isFront; }
-    if (p.origRole === 'MB' || p.origRole === 'MB2') mbZones.push(z);
-    if (p.origRole === 'OH' || p.origRole === 'OH2') ohZones.push(z);
-    if (p.origRole === 'OPP') oppZone = z;
-    if (p.role === 'L') libZone = z;
-  }
+  const btnYellowLeft = document.getElementById("btnCardHomeYellow");
+  const btnRedLeft = document.getElementById("btnCardHomeRed");
+  const btnYellowRight = document.getElementById("btnCardAwayYellow");
+  const btnRedRight = document.getElementById("btnCardAwayRed");
+  if (btnYellowLeft) btnYellowLeft.textContent = `Yellow Card ${leftName}`;
+  if (btnRedLeft) btnRedLeft.textContent = `Red Card ${leftName}`;
+  if (btnYellowRight) btnYellowRight.textContent = `Yellow Card ${rightName}`;
+  if (btnRedRight) btnRedRight.textContent = `Red Card ${rightName}`;
 
-  // FORMATION-SPECIFIC RECEIVE
-  if (formation === '5-1') {
-    pos = calc51Receive(zm, setterZone, setterFront, mbZones, ohZones, oppZone, libZone);
-  } else if (formation === '4-2') {
-    pos = calc42Receive(zm);
-  } else if (formation === '6-2') {
-    pos = calc62Receive(zm, setterZone, setterFront);
-  }
+  // Timeouts/subs display should reflect left/right teams
+  const leftTimeouts = leftTeam === "home" ? match.homeTimeouts : match.awayTimeouts;
+  const rightTimeouts = rightTeam === "home" ? match.homeTimeouts : match.awayTimeouts;
+  const leftSubs = leftTeam === "home" ? match.homeSubsUsed : match.awaySubsUsed;
+  const rightSubs = rightTeam === "home" ? match.homeSubsUsed : match.awaySubsUsed;
+  document.getElementById("homeTimeouts").textContent = leftTimeouts;
+  document.getElementById("awayTimeouts").textContent = rightTimeouts;
+  document.getElementById("homeSubs").textContent = leftSubs;
+  document.getElementById("awaySubs").textContent = rightSubs;
 
-  return pos;
+  const payload = getScoreboardPayload();
+  if (payload) updateScoreboardWindow(payload);
+
+  renderRotation();
+  renderLog();
+  renderSquads();
+  updateTimers();
 }
 
-function calc51Receive(zm, sZ, sFront, mbZ, ohZ, oppZ, libZ) {
-  let pos = {};
-
-  // In 5-1 serve receive, the key patterns per rotation:
-  // The setter penetrates to setting position (near zone 2-3 at net)
-  // MB hides at net to prepare quick attack
-  // OH(s) and Libero are primary passers
-  // OPP may or may not pass
-
-  // First set everyone to base
-  for (let z = 1; z <= 6; z++) {
-    pos[z] = { ...zm[z], x: C, y: MID_COURT };
+function openScoreboardWindow() {
+  if (scoreboardWindow && !scoreboardWindow.closed) {
+    scoreboardWindow.focus();
+    return;
   }
-
-  // 5-1 Receive for each rotation
-  // We need to handle this rotation by rotation because overlap constraints differ
-
-  const r = rot;
-
-  // Determine front row zones and back row zones
-  // Front: 2,3,4  Back: 1,5,6
-
-  // Primary passers: OH, OH2, Libero
-  // Non-passers: MB/MB2 (hide at net), Setter (goes to set), OPP (usually doesn't pass or limited)
-
-  // Place setter at target position (respecting overlap)
-  if (sFront) {
-    // Setter is front row - just move toward zone 2 area
-    if (sZ === 2) { pos[sZ].x = R - 20; pos[sZ].y = FRONT_BASE - 30; }
-    else if (sZ === 3) { pos[sZ].x = RC; pos[sZ].y = FRONT_BASE - 20; }
-    else if (sZ === 4) { pos[sZ].x = LC + 50; pos[sZ].y = FRONT_BASE - 20; }
-  } else {
-    // Setter is back row - penetrate position (will run to net after serve contact)
-    // Must stay behind corresponding front-row player before contact
-    if (sZ === 1) { pos[sZ].x = R; pos[sZ].y = FRONT_BASE + 50; }
-    else if (sZ === 6) { pos[sZ].x = RC + 20; pos[sZ].y = FRONT_BASE + 50; }
-    else if (sZ === 5) { pos[sZ].x = LC + 60; pos[sZ].y = FRONT_BASE + 50; }
+  scoreboardWindow = window.open("", "ivi_scoreboard", "width=900,height=500");
+  if (!scoreboardWindow) {
+    alert("Popup blocked. Please allow popups for this site.");
+    return;
   }
-
-  // Place MB(s) at net (hide from passing)
-  mbZ.forEach(z => {
-    if (isFrontZone(z)) {
-      // Front row MB: at net
-      if (z === 2) { pos[z].x = R - 30; pos[z].y = NET_CLOSE + 20; }
-      else if (z === 3) { pos[z].x = C; pos[z].y = NET_CLOSE + 15; }
-      else if (z === 4) { pos[z].x = L + 50; pos[z].y = NET_CLOSE + 20; }
-    }
-    // Back row MB is replaced by Libero (already in zm)
-  });
-
-  // Determine passing positions based on recvShape
-  let passers = [];
-  for (let z = 1; z <= 6; z++) {
-    const p = zm[z];
-    const isS = (p.origRole === 'S');
-    const isMB = (p.origRole === 'MB' || p.origRole === 'MB2');
-    if (!isS && !isMB) {
-      passers.push(z);
-    }
-  }
-
-  // In 3-person receive: use L, OH, OH2 (or L, OH, OPP if needed)
-  // In 4-person: add OPP
-  let passingZones = [];
-  if (recvShape === '3p') {
-    // Prefer OH, OH2, Libero
-    passingZones = passers.filter(z => {
-      const r = zm[z].role;
-      const o = zm[z].origRole;
-      return r === 'L' || o === 'OH' || o === 'OH2';
-    });
-    // If we don't have 3, add OPP
-    if (passingZones.length < 3) {
-      passers.forEach(z => {
-        if (!passingZones.includes(z)) passingZones.push(z);
-      });
-    }
-    passingZones = passingZones.slice(0, 3);
-  } else {
-    // 4-person: add OPP
-    passingZones = passers.slice(0, 4);
-  }
-
-  // Sort passers left to right for positioning
-  // The actual receive arc depends on rotation
-  // Standard 3-person arc: left passer, center passer, right passer
-  // Positioned in a slight arc behind the 3m line
-
-  const passPositions3 = [
-    { x: L + 80, y: BACK_BASE - 30 },  // left
-    { x: C, y: BACK_BASE + 20 },         // center (slightly deeper)
-    { x: R - 80, y: BACK_BASE - 30 },   // right
-  ];
-
-  const passPositions4 = [
-    { x: L + 60, y: BACK_BASE - 40 },
-    { x: LC + 40, y: BACK_BASE + 10 },
-    { x: RC - 40, y: BACK_BASE + 10 },
-    { x: R - 60, y: BACK_BASE - 40 },
-  ];
-
-  const ppos = recvShape === '3p' ? passPositions3 : passPositions4;
-
-  // Sort passing zones by their expected left-to-right order
-  // We need to respect overlap: if a passer is in zone 5, they must be left of zone 6 player
-  passingZones.sort((a, b) => {
-    const ax = zoneBaseX(a), bx = zoneBaseX(b);
-    return ax - bx;
-  });
-
-  passingZones.forEach((z, i) => {
-    if (i < ppos.length) {
-      // Check overlap constraints
-      let px = ppos[i].x;
-      let py = ppos[i].y;
-
-      // Back row passer must be behind front row in same column
-      if (isBackZone(z)) {
-        // Find the front row player in the same column pair
-        const frontPair = { 1: 2, 6: 3, 5: 4 };
-        const fz = frontPair[z];
-        if (pos[fz] && py <= pos[fz].y) {
-          py = pos[fz].y + 40;
+  scoreboardWindow.document.write(`
+        <!doctype html>
+        <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Scoreboard</title>
+          <style>
+            :root { --bg:#071525; --panel:#0f2236; --accent:#00a651; --muted:#8fa2c2; --text:#e5f0ff; }
+            body { margin:0; font-family: "Trebuchet MS", Arial, sans-serif; background:radial-gradient(circle at top, #163a63 0, #071525 55%); color:var(--text); }
+            .page { display:flex; flex-direction:column; height:100vh; padding:16px 24px; gap:10px; }
+            .topbar { display:flex; justify-content:space-between; align-items:center; color:var(--muted); font-size:14px; }
+            .winner { text-align:center; font-size:26px; font-weight:800; color:#ffd166; display:none; }
+            .winner.show { display:block; }
+            .set-history { text-align:center; font-size:14px; color:var(--muted); }
+            .wrap { display:flex; flex:1; align-items:stretch; justify-content:center; gap:24px; }
+            .card { flex:1; background:var(--panel); border-radius:20px; padding:22px; text-align:center; position:relative; box-shadow:0 10px 24px rgba(0,0,0,0.45); display:flex; flex-direction:column; justify-content:center; }
+            .logo { width:140px; height:140px; object-fit:contain; margin:0 auto 6px; filter:drop-shadow(0 4px 10px rgba(0,0,0,0.5)); }
+            .logo.hidden { display:none; }
+            .name { font-size:40px; font-weight:800; margin-bottom:10px; letter-spacing:0.03em; }
+            .sets { font-size:16px; color:var(--muted); }
+            .score { font-size:340px; font-weight:900; margin-top:12px; line-height:1; flex:1; display:flex; align-items:center; justify-content:center; }
+            .serve-dot { position:absolute; top:14px; right:14px; width:34px; height:34px; object-fit:contain; filter:drop-shadow(0 3px 8px rgba(0,0,0,0.45)); opacity:0; transform:scale(0.92); }
+            .card.serving .serve-dot { opacity:1; transform:scale(1); }
+            .center { font-size:18px; text-align:center; color:var(--muted); min-width:160px; display:flex; flex-direction:column; justify-content:center; }
+            .setnum { font-size:64px; font-weight:800; color:var(--text); margin-top:6px; }
+            .center .label { text-transform:uppercase; letter-spacing:0.12em; font-size:12px; }
+            .timeout { text-align:center; font-size:16px; color:#f4d35e; }
+            .timeout.hidden { display:none; }
+            .timeout-modal { position:fixed; inset:0; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:50; }
+            .timeout-modal.hidden { display:none; }
+            .timeout-card { background:var(--panel); border:3px solid #f4d35e; border-radius:24px; padding:40px 56px; text-align:center; box-shadow:0 16px 40px rgba(0,0,0,0.6); }
+            .overlay-logo { width:104px; height:104px; object-fit:contain; margin:0 auto 10px; filter:drop-shadow(0 4px 10px rgba(0,0,0,0.45)); }
+            .overlay-logo.hidden { display:none; }
+            .timeout-title { font-size:40px; font-weight:900; letter-spacing:0.1em; color:#f4d35e; }
+            .timeout-team { font-size:30px; color:var(--text); margin-top:10px; }
+            .timeout-clock { font-size:110px; font-weight:900; color:var(--text); margin-top:8px; }
+            .card-modal { position:fixed; inset:0; background:rgba(0,0,0,0.72); display:flex; align-items:center; justify-content:center; z-index:55; }
+            .card-modal.hidden { display:none; }
+            .card-popup { min-width:420px; background:var(--panel); border-radius:28px; padding:36px 42px; text-align:center; box-shadow:0 16px 40px rgba(0,0,0,0.6); border:4px solid #ffd166; }
+            .card-popup.red { border-color:#ef476f; }
+            .card-popup.yellow { border-color:#ffd166; }
+            .card-popup img { width:180px; height:180px; object-fit:contain; margin:0 auto 14px; }
+            .card-type { font-size:44px; font-weight:900; letter-spacing:0.08em; }
+            .card-team { font-size:30px; margin-top:10px; }
+            .card-player { font-size:112px; font-weight:900; line-height:1; margin-top:12px; }
+            .sfx-modal { position:fixed; inset:0; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:54; }
+            .sfx-modal.hidden { display:none; }
+            .sfx-card { min-width:640px; background:transparent; border-radius:34px; padding:20px; text-align:center; box-shadow:none; border:none; }
+            .sfx-image { width:520px; height:520px; object-fit:contain; margin:0 auto; filter:drop-shadow(0 8px 18px rgba(0,0,0,0.45)); }
+          </style>
+        </head>
+        <body>
+          <div class="page">
+            <div class="topbar">
+              <div id="matchId">Match ID: -</div>
+              <div id="matchTime">00:00</div>
+            </div>
+            <div class="winner" id="winnerBanner"></div>
+            <div class="set-history" id="setHistory">--</div>
+            <div class="wrap">
+              <div class="card" id="leftCard">
+                <img class="serve-dot" src="mikasa.png" alt="Serving" />
+                <img class="logo hidden" id="leftLogo" alt="" />
+                <div class="name" id="leftName">Team A</div>
+                <div class="sets">Sets: <span id="leftSets">0</span></div>
+                <div class="score" id="leftScore">0</div>
+              </div>
+              <div class="center">
+                <div class="label">Current Set</div>
+                <div class="setnum" id="currentSet">1</div>
+              </div>
+              <div class="card" id="rightCard">
+                <img class="serve-dot" src="mikasa.png" alt="Serving" />
+                <img class="logo hidden" id="rightLogo" alt="" />
+                <div class="name" id="rightName">Team B</div>
+                <div class="sets">Sets: <span id="rightSets">0</span></div>
+                <div class="score" id="rightScore">0</div>
+              </div>
+            </div>
+            <div class="timeout hidden" id="timeoutBox">Timeout: <span id="timeoutTeam">-</span> <span id="timeoutClock">00</span></div>
+            <div class="timeout-modal hidden" id="timeoutModal">
+              <div class="timeout-card">
+                <img class="overlay-logo hidden" id="timeoutLogoModal" alt="" />
+                <div class="timeout-title">TIMEOUT</div>
+                <div class="timeout-team" id="timeoutTeamModal">-</div>
+                <div class="timeout-clock" id="timeoutClockModal">00</div>
+              </div>
+            </div>
+            <div class="card-modal hidden" id="cardModal">
+              <div class="card-popup" id="cardPopup">
+                <img class="overlay-logo hidden" id="cardLogoModal" alt="" />
+                <div id="cardPopupEmoji" style="font-size:160px; line-height:1;">🟨</div>
+                <div class="card-type" id="cardPopupType">CARD</div>
+                <div class="card-team" id="cardPopupTeam">-</div>
+                <div class="card-player" id="cardPopupPlayer">#</div>
+              </div>
+            </div>
+            <div class="sfx-modal hidden" id="sfxModal">
+              <div class="sfx-card">
+                <img class="sfx-image" id="sfxImage" alt="" />
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `);
+  scoreboardWindow.document.close();
+  const sbScript = scoreboardWindow.document.createElement("script");
+  sbScript.textContent = `
+        let cardHideTimer = null;
+        function applyLogo(el, src, name) {
+          if (!el) return;
+          if (!src) {
+            el.classList.add("hidden");
+            el.removeAttribute("src");
+            el.alt = "";
+            return;
+          }
+          el.classList.remove("hidden");
+          el.src = src;
+          el.alt = name + " logo";
+          el.onerror = () => el.classList.add("hidden");
         }
-      }
-
-      // Front row passer: must be in front of corresponding back row
-      if (isFrontZone(z)) {
-        const backPair = { 2: 1, 3: 6, 4: 5 };
-        const bz = backPair[z];
-        if (pos[bz] && py >= pos[bz].y) {
-          py = pos[bz].y - 40;
-        }
-      }
-
-      pos[z].x = px;
-      pos[z].y = py;
-    }
-  });
-
-  // OPP: if not passing, position near setter or ready area
-  if (oppZ && !passingZones.includes(oppZ)) {
-    if (isFrontZone(oppZ)) {
-      pos[oppZ].x = R - 50;
-      pos[oppZ].y = FRONT_BASE;
-    } else {
-      // Back row OPP: ready to hit back row attack
-      pos[oppZ].x = R - 40;
-      pos[oppZ].y = BACK_BASE - 60;
-    }
-  }
-
-  enforceOverlapOnPositions(pos);
-  return pos;
+        window.addEventListener("message", (e) => {
+          const data = e.data;
+          if (!data || data.type !== "scoreboard:update") return;
+          document.getElementById("leftName").textContent = data.leftName;
+          document.getElementById("rightName").textContent = data.rightName;
+          applyLogo(document.getElementById("leftLogo"), data.leftLogo, data.leftName);
+          applyLogo(document.getElementById("rightLogo"), data.rightLogo, data.rightName);
+          document.getElementById("leftScore").textContent = data.leftScore;
+          document.getElementById("rightScore").textContent = data.rightScore;
+          document.getElementById("leftSets").textContent = data.leftSets;
+          document.getElementById("rightSets").textContent = data.rightSets;
+          document.getElementById("currentSet").textContent = data.currentSet;
+          document.getElementById("matchId").textContent = "Match ID: " + data.matchId;
+          document.getElementById("matchTime").textContent = data.matchTime;
+          document.getElementById("setHistory").textContent = data.setHistory || "--";
+          const winner = document.getElementById("winnerBanner");
+          if (data.winnerText) {
+            winner.textContent = data.winnerText;
+            winner.classList.add("show");
+          } else {
+            winner.textContent = "";
+            winner.classList.remove("show");
+          }
+          const timeoutBox = document.getElementById("timeoutBox");
+          const timeoutModal = document.getElementById("timeoutModal");
+          const cardModal = document.getElementById("cardModal");
+          const cardPopup = document.getElementById("cardPopup");
+          const sfxModal = document.getElementById("sfxModal");
+          if (data.timeoutRemaining > 0) {
+            timeoutBox.classList.remove("hidden");
+            document.getElementById("timeoutTeam").textContent = data.timeoutTeamName;
+            document.getElementById("timeoutClock").textContent = String(data.timeoutRemaining).padStart(2, "0");
+            timeoutModal.classList.remove("hidden");
+            applyLogo(document.getElementById("timeoutLogoModal"), data.timeoutTeamLogo, data.timeoutTeamName);
+            document.getElementById("timeoutTeamModal").textContent = data.timeoutTeamName;
+            document.getElementById("timeoutClockModal").textContent = String(data.timeoutRemaining).padStart(2, "0");
+          } else {
+            timeoutBox.classList.add("hidden");
+            timeoutModal.classList.add("hidden");
+          }
+          if (data.cardRemaining > 0 && data.cardColor) {
+            cardModal.classList.remove("hidden");
+            cardPopup.classList.toggle("yellow", data.cardColor === "yellow");
+            cardPopup.classList.toggle("red", data.cardColor === "red");
+            applyLogo(document.getElementById("cardLogoModal"), data.cardTeamLogo, data.cardTeamName);
+            document.getElementById("cardPopupEmoji").textContent = data.cardEmoji || (data.cardColor === "yellow" ? "🟨" : "🟥");
+            document.getElementById("cardPopupType").textContent = (data.cardColor === "yellow" ? "YELLOW" : "RED") + " CARD";
+            document.getElementById("cardPopupTeam").textContent = data.cardTeamName || "-";
+            document.getElementById("cardPopupPlayer").textContent = data.cardPlayerNumber ? "#" + data.cardPlayerNumber : "TEAM / COACH";
+            if (cardHideTimer) clearTimeout(cardHideTimer);
+            cardHideTimer = setTimeout(() => cardModal.classList.add("hidden"), data.cardRemaining * 1000 + 100);
+          } else {
+            cardModal.classList.add("hidden");
+            if (cardHideTimer) clearTimeout(cardHideTimer);
+            cardHideTimer = null;
+          }
+          if (data.sfxActive && data.sfxImage) {
+            sfxModal.classList.remove("hidden");
+            const sfxImage = document.getElementById("sfxImage");
+            sfxImage.src = data.sfxImage;
+            sfxImage.alt = data.sfxLabel || "Sound effect";
+          } else {
+            sfxModal.classList.add("hidden");
+          }
+          document.getElementById("leftCard").classList.toggle("serving", data.servingSide === "left");
+          document.getElementById("rightCard").classList.toggle("serving", data.servingSide === "right");
+        });
+      `;
+  scoreboardWindow.document.body.appendChild(sbScript);
+  scoreboardWindow.focus();
+  // Push current state immediately so names/scores are correct on open
+  const payload = getScoreboardPayload();
+  if (payload) updateScoreboardWindow(payload);
 }
 
-function calc42Receive(zm) {
-  let pos = {};
-
-  // 4-2: front setter sets, others receive/attack
-  let frontSetterZ = null;
-  for (let z = 1; z <= 6; z++) {
-    pos[z] = { ...zm[z] };
-    if ((zm[z].origRole === 'S' || zm[z].origRole === 'S2') && isFrontZone(z)) {
-      frontSetterZ = z;
-    }
-  }
-
-  // Position front setter near zone 2-3
-  if (frontSetterZ) {
-    if (frontSetterZ === 2) { pos[frontSetterZ].x = R - 20; pos[frontSetterZ].y = NET_CLOSE + 30; }
-    else if (frontSetterZ === 3) { pos[frontSetterZ].x = RC; pos[frontSetterZ].y = NET_CLOSE + 25; }
-    else if (frontSetterZ === 4) { pos[frontSetterZ].x = LC + 40; pos[frontSetterZ].y = NET_CLOSE + 30; }
-  }
-
-  // Front MB at net
-  for (let z = 2; z <= 4; z++) {
-    if ((zm[z].origRole === 'MB' || zm[z].origRole === 'MB2') && z !== frontSetterZ) {
-      pos[z].x = zoneBaseX(z);
-      pos[z].y = NET_CLOSE + 25;
-    }
-  }
-
-  // Remaining players receive in W/arc
-  let passers = [];
-  for (let z = 1; z <= 6; z++) {
-    if (z === frontSetterZ) continue;
-    if (isFrontZone(z) && (zm[z].origRole === 'MB' || zm[z].origRole === 'MB2')) continue;
-    passers.push(z);
-  }
-
-  const ppos = [
-    { x: L + 80, y: BACK_BASE - 20 },
-    { x: C - 30, y: BACK_BASE + 30 },
-    { x: C + 80, y: BACK_BASE + 30 },
-    { x: R - 80, y: BACK_BASE - 20 },
-  ];
-
-  passers.sort((a, b) => zoneBaseX(a) - zoneBaseX(b));
-  passers.forEach((z, i) => {
-    if (i < ppos.length) {
-      pos[z].x = ppos[i].x;
-      pos[z].y = ppos[i].y;
-    }
-  });
-
-  enforceOverlapOnPositions(pos);
-  return pos;
+function updateScoreboardWindow(payload) {
+  if (!scoreboardWindow || scoreboardWindow.closed) return;
+  scoreboardWindow.postMessage({ type: "scoreboard:update", ...payload }, "*");
 }
 
-function calc62Receive(zm, sZ, sFront) {
-  let pos = {};
-  for (let z = 1; z <= 6; z++) pos[z] = { ...zm[z] };
-
-  // 6-2: back row setter penetrates, front row "setter" attacks
-  // Find back row setter
-  let backSetterZ = null;
-  for (let z = 1; z <= 6; z++) {
-    if ((zm[z].origRole === 'S' || zm[z].origRole === 'S2') && isBackZone(z)) {
-      backSetterZ = z;
-    }
+function openAudioPanelWindow() {
+  if (audioPanelWindow && !audioPanelWindow.closed) {
+    audioPanelWindow.focus();
+    return;
   }
 
-  if (backSetterZ) {
-    // Penetrate position
-    if (backSetterZ === 1) { pos[backSetterZ].x = R; pos[backSetterZ].y = FRONT_BASE + 50; }
-    else if (backSetterZ === 6) { pos[backSetterZ].x = RC + 20; pos[backSetterZ].y = FRONT_BASE + 50; }
-    else if (backSetterZ === 5) { pos[backSetterZ].x = LC + 60; pos[backSetterZ].y = FRONT_BASE + 50; }
+  audioPanelWindow = window.open("", "ivi_audio_panel", "width=430,height=760");
+  if (!audioPanelWindow) {
+    alert("Popup blocked. Please allow popups for this site.");
+    return;
   }
 
-  // Front row: all 3 are attackers (including the "setter" who acts as attacker)
-  for (let z = 2; z <= 4; z++) {
-    if ((zm[z].origRole === 'MB' || zm[z].origRole === 'MB2')) {
-      pos[z].y = NET_CLOSE + 25;
-      pos[z].x = zoneBaseX(z);
-    } else {
-      pos[z].y = FRONT_BASE - 10;
-      pos[z].x = zoneBaseX(z);
-    }
-  }
+  audioPanelWindow.document.write(`
+        <!doctype html>
+        <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Audio Panel</title>
+          <style>
+            :root { --bg:#071525; --panel:#0f2236; --muted:#8fa2c2; --text:#e5f0ff; --accent:#00a651; --warn:#ff6f00; }
+            * { box-sizing: border-box; }
+            body { margin:0; font-family:"Trebuchet MS", Arial, sans-serif; background:radial-gradient(circle at top, #163a63 0, #071525 55%); color:var(--text); }
+            .page { min-height:100vh; padding:18px; padding-bottom:calc(18px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:14px; }
+            .head { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+            .title { font-size:22px; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; }
+            .hint { color:var(--muted); font-size:13px; }
+            .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; }
+            .btn { border:none; border-radius:16px; padding:18px 14px; font-size:22px; font-weight:800; cursor:pointer; color:#fff; background:#203854; box-shadow:0 6px 14px rgba(0,0,0,0.45); min-height:84px; }
+            .btn.active { background:linear-gradient(135deg, #009f4f, #00c86a); }
+            .stop { background:linear-gradient(135deg, #ff6f00, #ff9a2b); margin-top:4px; }
+            .status { font-size:14px; color:var(--muted); }
+            @media (max-width:700px) { .grid { grid-template-columns:1fr; } .btn { font-size:24px; min-height:94px; padding:22px 14px; } }
+            @media (max-width:480px), (pointer:coarse) {
+              .page { padding:14px; gap:10px; }
+              .title { font-size:20px; }
+              .hint { font-size:12px; }
+              .status { font-size:12px; }
+              .grid { gap:10px; }
+              .btn { font-size:26px; min-height:100px; padding:24px 12px; border-radius:18px; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="page">
+            <div class="head">
+              <div>
+                <div class="title">Audio Panel</div>
+                <div class="hint">Tap a sound to play/stop</div>
+              </div>
+              <div class="status" id="audioStatus">Ready</div>
+            </div>
+            <div class="grid" id="audioGrid"></div>
+            <button class="btn stop" id="btnStopAudio">Stop All</button>
+          </div>
+          <script>
+            const grid = document.getElementById("audioGrid");
+            const statusEl = document.getElementById("audioStatus");
+            let current = { activeKey: null, tracks: [] };
 
-  // Back row passers (except penetrating setter)
-  let passers = [];
-  for (let z = 1; z <= 6; z++) {
-    if (z === backSetterZ) continue;
-    if (isBackZone(z)) passers.push(z);
-  }
+            function renderButtons() {
+              grid.innerHTML = current.tracks.map(t =>
+                '<button class="btn ' + (current.activeKey === t.key ? "active" : "") + '" data-key="' + t.key + '">' + t.label + '</button>'
+              ).join("");
+              statusEl.textContent = current.activeKey
+                ? ("Playing: " + ((current.tracks.find(t => t.key === current.activeKey) || {}).label || current.activeKey))
+                : "Ready";
+            }
 
-  const ppos = [
-    { x: L + 100, y: BACK_BASE + 10 },
-    { x: R - 100, y: BACK_BASE + 10 },
-  ];
-  passers.sort((a, b) => zoneBaseX(a) - zoneBaseX(b));
-  passers.forEach((z, i) => {
-    if (i < ppos.length) { pos[z].x = ppos[i].x; pos[z].y = ppos[i].y; }
-  });
+            window.addEventListener("message", (e) => {
+              const data = e.data;
+              if (!data || data.type !== "audio-panel:update") return;
+              current = data;
+              renderButtons();
+            });
 
-  enforceOverlapOnPositions(pos);
-  return pos;
+            grid.addEventListener("click", (e) => {
+              const btn = e.target.closest("button[data-key]");
+              if (!btn || !window.opener) return;
+              window.opener.postMessage({ type: "audio-panel:toggle", key: btn.dataset.key }, "*");
+            });
+
+            document.getElementById("btnStopAudio").addEventListener("click", () => {
+              if (!window.opener) return;
+              window.opener.postMessage({ type: "audio-panel:stop" }, "*");
+            });
+          </script>
+        </body>
+        </html>
+      `);
+  audioPanelWindow.document.close();
+  audioPanelWindow.focus();
+  updateAudioPanelWindow();
 }
 
-function zoneBaseX(z) {
-  const map = { 1: R, 2: R, 3: C, 4: L, 5: L, 6: C };
-  return map[z] || C;
-}
-
-function calcDefense(zm) {
-  let pos = {};
-  for (let z = 1; z <= 6; z++) pos[z] = { ...zm[z] };
-
-  // Front row: blocking positions
-  // Determine block based on where attack is coming from
-  const atkDir = defVs; // 'z4', 'z3', 'z2', 'pipe'
-
-  // Find front row players
-  let frontZones = [2, 3, 4];
-  let backZones = [1, 5, 6];
-
-  if (atkDir === 'z4') {
-    // Attack from opponent's zone 4 (our right side)
-    // Double/triple block on our right
-    pos[2].x = R - 30; pos[2].y = NET_CLOSE;
-    pos[3].x = R - 80; pos[3].y = NET_CLOSE; // join block
-    pos[4].x = LC; pos[4].y = FRONT_BASE + 40; // off-blocker pulls back
-
-    // Back row defense
-    pos[1].x = R - 30; pos[1].y = BACK_BASE + 40; // line defense
-    pos[6].x = C + 20; pos[6].y = MID_COURT + 30; // behind block
-    pos[5].x = L + 50; pos[5].y = BACK_BASE; // cross-court deep
-  } else if (atkDir === 'z2') {
-    // Attack from opponent's zone 2 (our left side)
-    pos[4].x = L + 30; pos[4].y = NET_CLOSE;
-    pos[3].x = L + 80; pos[3].y = NET_CLOSE;
-    pos[2].x = RC; pos[2].y = FRONT_BASE + 40;
-
-    pos[5].x = L + 30; pos[5].y = BACK_BASE + 40;
-    pos[6].x = C - 20; pos[6].y = MID_COURT + 30;
-    pos[1].x = R - 50; pos[1].y = BACK_BASE;
-  } else if (atkDir === 'z3') {
-    pos[3].x = C; pos[3].y = NET_CLOSE;
-    pos[2].x = C + 60; pos[2].y = NET_CLOSE; // join block
-    pos[4].x = C - 60; pos[4].y = NET_CLOSE;
-
-    pos[1].x = R - 50; pos[1].y = BACK_BASE;
-    pos[6].x = C; pos[6].y = BACK_BASE + 20;
-    pos[5].x = L + 50; pos[5].y = BACK_BASE;
-  } else if (atkDir === 'pipe') {
-    pos[3].x = C; pos[3].y = NET_CLOSE;
-    pos[2].x = RC; pos[2].y = FRONT_BASE;
-    pos[4].x = LC; pos[4].y = FRONT_BASE;
-
-    pos[1].x = R - 40; pos[1].y = BACK_BASE + 30;
-    pos[6].x = C; pos[6].y = BACK_BASE + 40;
-    pos[5].x = L + 40; pos[5].y = BACK_BASE + 30;
-  }
-
-  enforceOverlapOnPositions(pos);
-  return pos;
-}
-
-function enforceOverlapOnPositions(pos) {
-  // Left-right front: z4.x < z3.x < z2.x
-  if (pos[4] && pos[3] && pos[4].x >= pos[3].x) pos[4].x = pos[3].x - 35;
-  if (pos[3] && pos[2] && pos[3].x >= pos[2].x) pos[3].x = pos[2].x - 35;
-
-  // Left-right back: z5.x < z6.x < z1.x
-  if (pos[5] && pos[6] && pos[5].x >= pos[6].x) pos[5].x = pos[6].x - 35;
-  if (pos[6] && pos[1] && pos[6].x >= pos[1].x) pos[6].x = pos[1].x - 35;
-
-  // Front-back (front must have lower y = closer to net):
-  // z4.y < z5.y | z3.y < z6.y | z2.y < z1.y
-  const pairs = [[4, 5], [3, 6], [2, 1]];
-  pairs.forEach(([f, b]) => {
-    if (pos[f] && pos[b] && pos[f].y >= pos[b].y) {
-      pos[f].y = pos[b].y - 35;
-    }
-  });
-
-  // Bounds
-  for (let z = 1; z <= 6; z++) {
-    if (!pos[z]) continue;
-    pos[z].x = Math.max(CT.l + PLAYER_R, Math.min(CT.l + CT.w - PLAYER_R, pos[z].x));
-    pos[z].y = Math.max(NET_Y + PLAYER_R + 5, Math.min(CT.t + CT.h - PLAYER_R, pos[z].y));
-  }
-}
-
-function enforceOverlapLive() {
-  const byZone = {};
-  players.forEach(p => { if (p.zone) byZone[p.zone] = p; });
-
-  if (byZone[4] && byZone[3] && byZone[4].x >= byZone[3].x) byZone[4].x = byZone[3].x - 30;
-  if (byZone[3] && byZone[2] && byZone[3].x >= byZone[2].x) byZone[3].x = byZone[2].x - 30;
-  if (byZone[5] && byZone[6] && byZone[5].x >= byZone[6].x) byZone[5].x = byZone[6].x - 30;
-  if (byZone[6] && byZone[1] && byZone[6].x >= byZone[1].x) byZone[6].x = byZone[1].x - 30;
-
-  [[4, 5], [3, 6], [2, 1]].forEach(([f, b]) => {
-    if (byZone[f] && byZone[b] && byZone[f].y >= byZone[b].y) byZone[f].y = byZone[b].y - 30;
-  });
-
-  players.forEach(p => {
-    if (p.team === 'home') {
-      p.x = Math.max(CT.l + p.r, Math.min(CT.l + CT.w - p.r, p.x));
-      p.y = Math.max(NET_Y + p.r + 5, Math.min(CT.t + CT.h - p.r, p.y));
-    }
-  });
-}
-
-// BUILD PLAYERS
-
-function buildPlayers() {
-  const oldNums = {};
-  players.forEach(p => { if (p.num) oldNums[p.origRole || p.role] = p.num; });
-  Object.assign(oldNums, playerNumbers);
-
-  const positions = calcPositions();
-  players = [];
-
-  for (let z = 1; z <= 6; z++) {
-    const p = positions[z];
-    if (!p) continue;
-    players.push({
-      role: p.role,
-      origRole: p.origRole,
-      zone: z,
-      x: p.x,
-      y: p.y,
-      isFront: p.isFront,
-      isBack: p.isBack,
-      team: 'home',
-      r: PLAYER_R,
-      num: oldNums[p.origRole] || playerNumbers[p.origRole] || '',
-    });
-  }
-
-}
-
-// RENDERING
-
-function resize() {
-  const w0 = document.querySelector('.canvas-wrap');
-  const mW = w0.clientWidth - 16, mH = w0.clientHeight - 16;
-  const ratio = V.W / V.H;
-  let w, h;
-  if (mW / mH > ratio) { h = mH; w = h * ratio; } else { w = mW; h = w / ratio; }
-  canvas.width = Math.floor(w); canvas.height = Math.floor(h);
-  sx = canvas.width / V.W; sy = canvas.height / V.H;
-  render();
-}
-window.addEventListener('resize', resize);
-
-function drawCourt() {
-  const l = CT.l * sx, t = CT.t * sy, w = CT.w * sx, h = CT.h * sy, ny = NET_Y * sy;
-
-  ctx.fillStyle = '#0d1628';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // Single half-court (our side only)
-  ctx.fillStyle = '#162a50';
-  ctx.fillRect(l, t, w, h);
-
-  // Court branding watermark (sponsor style)
-  if (courtLogo.complete && courtLogo.naturalWidth > 0) {
-    const wmH = Math.min(h * 0.72, w * 0.55);
-    const wmW = Math.min(w * 0.96, wmH * 2);
-    const alpha = 0.10;
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.drawImage(courtLogo, l + w * 0.5 - wmW * 0.5, t + h * 0.52 - wmH * 0.5, wmW, wmH);
-    ctx.restore();
-  }
-
-  // 3m attack lines (solid)
-  ctx.setLineDash([]);
-  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-  ctx.lineWidth = 2;
-  const atkY1 = (NET_Y - ATK_LINE_DIST) * sy;
-  const atkY2 = (NET_Y + ATK_LINE_DIST) * sy;
-  ctx.beginPath(); ctx.moveTo(l, atkY1); ctx.lineTo(l + w, atkY1); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(l, atkY2); ctx.lineTo(l + w, atkY2); ctx.stroke();
-
-  // Subtle grid
-  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-  ctx.lineWidth = 1;
-  const tw = w / 3;
-  for (let i = 1; i < 3; i++) {
-    ctx.beginPath(); ctx.moveTo(l + tw * i, t); ctx.lineTo(l + tw * i, t + h); ctx.stroke();
-  }
-  ctx.setLineDash([]);
-
-  // Court border
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 2.5;
-  ctx.strokeRect(l, t, w, h);
-
-  // Center line
-  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(l, ny); ctx.lineTo(l + w, ny); ctx.stroke();
-
-  // NET
-  const netH = 10 * sy;
-  ctx.fillStyle = 'rgba(200,16,46,0.15)';
-  ctx.fillRect(l - 8, ny - netH / 2, w + 16, netH);
-  ctx.strokeStyle = '#c8102e';
-  ctx.lineWidth = 4;
-  ctx.beginPath(); ctx.moveTo(l - 12, ny); ctx.lineTo(l + w + 12, ny); ctx.stroke();
-
-  // Net mesh
-  ctx.strokeStyle = 'rgba(200,16,46,0.2)';
-  ctx.lineWidth = 0.8;
-  for (let i = 0; i < 20; i++) {
-    const px = l + i * (w / 19);
-    ctx.beginPath(); ctx.moveTo(px, ny - netH / 2); ctx.lineTo(px, ny + netH / 2); ctx.stroke();
-  }
-
-  // Antennae
-  ctx.fillStyle = '#c8102e';
-  ctx.fillRect(l - 4, ny - 16 * sy, 5, 32 * sy);
-  ctx.fillRect(l + w - 1, ny - 16 * sy, 5, 32 * sy);
-  ctx.fillStyle = '#f59e0b';
-  ctx.fillRect(l - 4, ny - 16 * sy, 5, 5);
-  ctx.fillRect(l + w - 1, ny - 16 * sy, 5, 5);
-
-  // Labels
-  ctx.fillStyle = '#c8102e';
-  ctx.font = `bold ${10 * sx}px sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'bottom';
-  ctx.fillText('NET', l + w / 2, ny - netH / 2 - 2);
-
-  // Zone numbers
-  if (showZoneNumbers) {
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
-    ctx.font = `bold ${42 * sx}px sans-serif`;
-    ctx.textBaseline = 'middle';
-    const hZ = { 1: [R, BACK_BASE], 2: [R, FRONT_BASE], 3: [C, FRONT_BASE], 4: [L, FRONT_BASE], 5: [L, BACK_BASE], 6: [C, BACK_BASE] };
-    Object.entries(hZ).forEach(([z, [x, y]]) => ctx.fillText(z, x * sx, y * sy));
-  }
-
-  // Attack line labels
-  ctx.fillStyle = 'rgba(255,255,255,0.12)';
-  ctx.font = `${8 * sx}px sans-serif`;
-  ctx.fillText('3m ATTACK LINE', l + w / 2, atkY2 + 11 * sy);
-  ctx.fillText('3m ATTACK LINE', l + w / 2, atkY2 + 11 * sy);
-
-}
-
-function drawPlayerObj(p) {
-  const px = p.x * sx, py = p.y * sy, r = p.r * sx;
-  const isAway = p.team === 'away';
-  const rc = ROLES[p.role] || ROLES[p.origRole] || { color: '#607080', label: p.role };
-
-  // Shadow
-  ctx.beginPath(); ctx.arc(px, py + 3, r, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fill();
-
-  // Main circle
-  ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
-  const g = ctx.createRadialGradient(px - r * .3, py - r * .3, r * .1, px, py, r);
-  if (isAway) {
-    g.addColorStop(0, '#555'); g.addColorStop(1, '#222');
-  } else {
-    g.addColorStop(0, rc.color); g.addColorStop(1, shade(rc.color, -40));
-  }
-  ctx.fillStyle = g; ctx.fill();
-
-  // Border
-  ctx.strokeStyle = (selPlayer === p) ? '#fff' : (isAway ? '#555' : shade(rc.color, 25));
-  ctx.lineWidth = (selPlayer === p) ? 3 : 1.5;
-  ctx.stroke();
-
-  if (selPlayer === p) {
-    ctx.beginPath(); ctx.arc(px, py, r + 5, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(200,16,46,0.5)'; ctx.lineWidth = 2; ctx.stroke();
-  }
-
-  // Role label
-  ctx.fillStyle = '#fff';
-  const fs = (rc.label.length > 2 ? 9 : 12) * sx;
-  ctx.font = `bold ${fs}px sans-serif`;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(rc.label, px, py);
-
-  // Zone badge
-  if (showZoneNumbers && p.zone && p.team === 'home') {
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    ctx.beginPath(); ctx.arc(px + r * .75, py - r * .75, 7 * sx, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#ddd'; ctx.font = `bold ${7 * sx}px sans-serif`;
-    ctx.fillText('Z' + p.zone, px + r * .75, py - r * .75);
-  }
-
-  // Number
-  if (p.num) {
-    ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    ctx.font = `bold ${10 * sx}px sans-serif`;
-    ctx.fillText('#' + p.num, px, py + r + 13 * sy);
-  }
-}
-
-function drawBallObj() {
-  if (!showBall || !ball) return;
-  const bx = ball.x * sx, by = ball.y * sy, r = 13 * sx;
-  ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2);
-  const g = ctx.createRadialGradient(bx - 3, by - 3, 1, bx, by, r);
-  g.addColorStop(0, '#fffde4'); g.addColorStop(1, '#e8c800');
-  ctx.fillStyle = g; ctx.fill();
-  ctx.strokeStyle = '#b89600'; ctx.lineWidth = 1.5; ctx.stroke();
-  ctx.strokeStyle = 'rgba(180,140,0,0.4)'; ctx.lineWidth = .8;
-  ctx.beginPath(); ctx.arc(bx, by, r * .55, -.6, .6); ctx.stroke();
-  ctx.beginPath(); ctx.arc(bx, by, r * .55, 2.5, 3.7); ctx.stroke();
-  if (selPlayer === ball) {
-    ctx.beginPath(); ctx.arc(bx, by, r + 5, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(255,200,0,0.5)'; ctx.lineWidth = 2; ctx.stroke();
-  }
-}
-
-function drawAllDrawings() {
-  drawings.forEach(d => {
-    ctx.strokeStyle = d.color; ctx.lineWidth = d.w * sx; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    if (d.type === 'free') {
-      if (d.pts.length < 2) return;
-      ctx.beginPath(); ctx.moveTo(d.pts[0].x * sx, d.pts[0].y * sy);
-      d.pts.forEach(p => ctx.lineTo(p.x * sx, p.y * sy)); ctx.stroke();
-    } else if (d.type === 'arrow') {
-      arrowFn(d.a.x * sx, d.a.y * sy, d.b.x * sx, d.b.y * sy, d.color, d.w * sx);
-    } else if (d.type === 'curve') {
-      if (d.pts.length < 2) return;
-      ctx.beginPath(); ctx.moveTo(d.pts[0].x * sx, d.pts[0].y * sy);
-      for (let i = 1; i < d.pts.length - 1; i++) {
-        const xc = (d.pts[i].x + d.pts[i + 1].x) / 2 * sx;
-        const yc = (d.pts[i].y + d.pts[i + 1].y) / 2 * sy;
-        ctx.quadraticCurveTo(d.pts[i].x * sx, d.pts[i].y * sy, xc, yc);
-      }
-      ctx.lineTo(d.pts[d.pts.length - 1].x * sx, d.pts[d.pts.length - 1].y * sy);
-      ctx.stroke();
-      if (d.pts.length >= 2) {
-        const p1 = d.pts[d.pts.length - 2], p2 = d.pts[d.pts.length - 1];
-        arrowHeadFn(p1.x * sx, p1.y * sy, p2.x * sx, p2.y * sy, d.color, d.w * sx);
-      }
-    } else if (d.type === 'zone') {
-      const x = Math.min(d.a.x, d.b.x) * sx, y = Math.min(d.a.y, d.b.y) * sy;
-      const w = Math.abs(d.b.x - d.a.x) * sx, h2 = Math.abs(d.b.y - d.a.y) * sy;
-      ctx.fillStyle = d.color + '18'; ctx.fillRect(x, y, w, h2);
-      ctx.strokeStyle = d.color; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h2);
-    } else if (d.type === 'text') {
-      ctx.fillStyle = d.color; ctx.font = `bold ${14 * sx}px sans-serif`;
-      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-      ctx.fillText(d.text, d.x * sx, d.y * sy);
-    }
-  });
-
-  if (curDraw && curDraw.type === 'free' && curDraw.pts.length > 1) {
-    ctx.strokeStyle = curDraw.color; ctx.lineWidth = curDraw.w * sx; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(curDraw.pts[0].x * sx, curDraw.pts[0].y * sy);
-    curDraw.pts.forEach(p => ctx.lineTo(p.x * sx, p.y * sy)); ctx.stroke();
-  }
-}
-
-function arrowFn(x1, y1, x2, y2, c, w) {
-  ctx.strokeStyle = c; ctx.lineWidth = w; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-  arrowHeadFn(x1, y1, x2, y2, c, w);
-}
-
-function arrowHeadFn(x1, y1, x2, y2, c, w) {
-  const a = Math.atan2(y2 - y1, x2 - x1), hl = 14 * sx;
-  ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(x2, y2);
-  ctx.lineTo(x2 - hl * Math.cos(a - .35), y2 - hl * Math.sin(a - .35));
-  ctx.lineTo(x2 - hl * Math.cos(a + .35), y2 - hl * Math.sin(a + .35));
-  ctx.closePath(); ctx.fill();
-}
-
-function render() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawCourt();
-  drawAllDrawings();
-  drawBallObj();
-  players.forEach(drawPlayerObj);
-  updateStatus();
-}
-
-// INTERACTION
-
-function gp(e) {
-  const r = canvas.getBoundingClientRect();
-  const cx = e.touches ? e.touches[0].clientX : e.clientX;
-  const cy = e.touches ? e.touches[0].clientY : e.clientY;
-  return { x: (cx - r.left) / sx, y: (cy - r.top) / sy };
-}
-function gpEnd(e) {
-  const r = canvas.getBoundingClientRect();
-  const cx = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
-  const cy = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
-  return { x: (cx - r.left) / sx, y: (cy - r.top) / sy };
-}
-
-function findHit(pos) {
-  for (let i = players.length - 1; i >= 0; i--) {
-    if (Math.hypot(pos.x - players[i].x, pos.y - players[i].y) < players[i].r + 6)
-      return { type: 'player', obj: players[i], idx: i };
-  }
-  if (showBall && ball && Math.hypot(pos.x - ball.x, pos.y - ball.y) < 18)
-    return { type: 'ball', obj: ball, idx: 0 };
-  return null;
-}
-
-canvas.addEventListener('mousedown', onDown);
-canvas.addEventListener('mousemove', onMove);
-canvas.addEventListener('mouseup', onUp);
-canvas.addEventListener('touchstart', e => { e.preventDefault(); onDown(e); }, { passive: false });
-canvas.addEventListener('touchmove', e => { e.preventDefault(); onMove(e); }, { passive: false });
-canvas.addEventListener('touchend', e => { e.preventDefault(); onUp(e); }, { passive: false });
-
-canvas.addEventListener('contextmenu', e => {
-  e.preventDefault();
-  const pos = gp(e);
-  const hit = findHit(pos);
-  if (hit && (hit.type === 'player' || hit.type === 'opp')) {
-    ctxTarget = hit;
-    const m = document.getElementById('ctxMenu');
-    m.style.display = 'block'; m.style.left = e.clientX + 'px'; m.style.top = e.clientY + 'px';
-  }
+// ---- Button wiring ----
+document.getElementById("btnNewMatch").addEventListener("click", () => {
+  if (match && match.events.length && !confirm("This will reset the current match. Continue?")) return;
+  createNewMatch();
 });
-document.addEventListener('click', () => { document.getElementById('ctxMenu').style.display = 'none'; });
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && presentationMode) {
-    e.preventDefault();
-    togglePresentationMode(false);
-  } else if (!e.ctrlKey && !e.altKey && !e.metaKey && e.key.toLowerCase() === 'p') {
-    e.preventDefault();
-    togglePresentationMode();
-  } else if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 'z') {
-    e.preventDefault();
-    undo();
-  } else if ((e.ctrlKey && e.key.toLowerCase() === 'y') || (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'z')) {
-    e.preventDefault();
-    redo();
+
+const lineupsBtn = document.getElementById("btnLineups");
+if (lineupsBtn) lineupsBtn.addEventListener("click", () => setLineups());
+
+document.getElementById("btnPointHome").addEventListener("click", () => addPointForSide("left"));
+document.getElementById("btnPointAway").addEventListener("click", () => addPointForSide("right"));
+
+document.getElementById("btnTimeoutHome").addEventListener("click", () => callTimeoutForSide("left"));
+document.getElementById("btnTimeoutAway").addEventListener("click", () => callTimeoutForSide("right"));
+
+document.getElementById("btnCardHomeYellow").addEventListener("click", () => cardForSide("left", "yellow"));
+document.getElementById("btnCardHomeRed").addEventListener("click", () => cardForSide("left", "red"));
+document.getElementById("btnCardAwayYellow").addEventListener("click", () => cardForSide("right", "yellow"));
+document.getElementById("btnCardAwayRed").addEventListener("click", () => cardForSide("right", "red"));
+document.getElementById("btnCloseCardEntry").addEventListener("click", () => closeCardEntryModal());
+document.getElementById("btnConfirmCardEntry").addEventListener("click", () => confirmCardEntry());
+document.getElementById("cardEntryOverlay").addEventListener("click", (e) => {
+  if (e.target.id === "cardEntryOverlay") closeCardEntryModal();
+});
+document.getElementById("cardPlayerNumberInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") confirmCardEntry();
+  if (e.key === "Escape") closeCardEntryModal();
+});
+
+document.getElementById("btnUndo").addEventListener("click", () => undoLast());
+document.getElementById("btnEndSet").addEventListener("click", () => endCurrentSet());
+document.getElementById("btnEndMatch").addEventListener("click", () => endMatchManually());
+document.getElementById("btnSubHome").addEventListener("click", () => substitutePlayer("home"));
+document.getElementById("btnSubAway").addEventListener("click", () => substitutePlayer("away"));
+document.getElementById("btnCloseSummary").addEventListener("click", () => hideMatchSummary());
+document.getElementById("btnOpenScoreboard").addEventListener("click", () => openScoreboardWindow());
+const btnOpenAudioPanel = document.getElementById("btnOpenAudioPanel");
+if (btnOpenAudioPanel) btnOpenAudioPanel.addEventListener("click", () => openAudioPanelWindow());
+const btnSfxAce = document.getElementById("btnSfxAce");
+const btnSfxBlock = document.getElementById("btnSfxBlock");
+const btnSfxBoom = document.getElementById("btnSfxBoom");
+const btnSfxBrasil = document.getElementById("btnSfxBrasil");
+if (btnSfxAce) btnSfxAce.addEventListener("click", () => toggleSfx("ace"));
+if (btnSfxBlock) btnSfxBlock.addEventListener("click", () => toggleSfx("block"));
+if (btnSfxBoom) btnSfxBoom.addEventListener("click", () => toggleSfx("boom"));
+if (btnSfxBrasil) btnSfxBrasil.addEventListener("click", () => toggleSfx("brasilSil"));
+document.getElementById("btnOpenRegister").addEventListener("click", () => {
+  window.open("register.html", "_blank");
+});
+
+document.querySelectorAll(".squad-list span").forEach(el => {
+  if (el.classList.contains("squad-slot")) return;
+  el.addEventListener("click", (e) => {
+    const target = e.target;
+    const team = target.dataset.team;
+    const num = target.dataset.num;
+    promptPlayerName(team, num);
+  });
+});
+
+document.addEventListener("click", (e) => {
+  const slot = e.target.closest(".squad-slot");
+  if (slot) {
+    const team = slot.dataset.team;
+    const num = slot.dataset.num;
+    promptPlayerName(team, num);
   }
 });
 
-canvas.addEventListener('dblclick', e => {
-  const pos = gp(e);
-  if (tool === 'curve' && curvePoints.length >= 2) {
-    curvePoints.push(pos);
-    drawings.push({ type: 'curve', pts: [...curvePoints], color: dColor, w: lineW });
-    curvePoints = []; render(); commitHistory(); return;
+// Update team names live so future log entries use the chosen names
+document.getElementById("homeNameInput").addEventListener("change", (e) => {
+  refreshFirstServeLabels();
+  if (!match) return;
+  match.homeTeam = e.target.value || "Team A";
+  saveMatchToStorage();
+  renderAll();
+  syncNamesToOBS();
+});
+document.getElementById("awayNameInput").addEventListener("change", (e) => {
+  refreshFirstServeLabels();
+  if (!match) return;
+  match.awayTeam = e.target.value || "Team B";
+  saveMatchToStorage();
+  renderAll();
+  syncNamesToOBS();
+});
+document.getElementById("homeNameInput").addEventListener("input", refreshFirstServeLabels);
+document.getElementById("awayNameInput").addEventListener("input", refreshFirstServeLabels);
+
+window.addEventListener("message", (e) => {
+  const data = e.data;
+  if (!data || typeof data !== "object") return;
+  if (data.type === "audio-panel:toggle") {
+    toggleSfx(data.key);
   }
-  const hit = findHit(pos);
-  if (hit && (hit.type === 'player' || hit.type === 'opp')) {
-    const n = prompt('Player number:', hit.obj.num || '');
-    if (n !== null) {
-      hit.obj.num = n;
-      if (hit.obj.origRole) playerNumbers[hit.obj.origRole] = n;
-      render();
-      commitHistory();
-    }
+  if (data.type === "audio-panel:stop") {
+    stopAllSfx();
   }
 });
 
-function onDown(e) {
-  const pos = gp(e);
-  hideCtx();
-  if (tool === 'select') {
-    dragMoved = false;
-    const hit = findHit(pos);
-    if (hit) {
-      drag = hit; dragOff = { x: pos.x - hit.obj.x, y: pos.y - hit.obj.y };
-      selPlayer = hit.obj;
-    } else { selPlayer = null; }
-    render();
-  } else if (tool === 'draw') {
-    curDraw = { type: 'free', pts: [pos], color: dColor, w: lineW };
-  } else if (tool === 'arrow') {
-    lineStart = pos;
-  } else if (tool === 'curve') {
-    if (curvePoints.length === 0) curvePoints = [pos]; else curvePoints.push(pos);
-  }
-}
-
-function onMove(e) {
-  const pos = gp(e);
-  if (tool === 'select' && drag) {
-    drag.obj.x = pos.x - dragOff.x;
-    drag.obj.y = pos.y - dragOff.y;
-    dragMoved = true;
-    if (drag.type === 'player') enforceOverlapLive();
-    if (drag.type === 'opp') {
-      drag.obj.x = Math.max(CT.l + drag.obj.r, Math.min(CT.l + CT.w - drag.obj.r, drag.obj.x));
-      drag.obj.y = Math.max(CT.t + drag.obj.r, Math.min(NET_Y - drag.obj.r - 5, drag.obj.y));
+// ---- Init ----
+(function init() {
+  const stored = loadMatchFromStorage();
+  if (stored) {
+    match = stored;
+    // Backfill firstServer if missing from old saves
+    match.firstServer = match.firstServer || match.serving || "home";
+    // Backfill side flag
+    if (typeof match.homeOnLeft !== "boolean") match.homeOnLeft = true;
+    // Backfill starting six snapshots if missing
+    if (!match.homeStartingSix || match.homeStartingSix.length !== 6) {
+      match.homeStartingSix = (match.homeBaseRotation || []).slice();
     }
-    if (drag.type === 'ball') {
-      ball.x = Math.max(CT.l + 10, Math.min(CT.l + CT.w - 10, ball.x));
-      ball.y = Math.max(CT.t + 10, Math.min(CT.t + CT.h - 10, ball.y));
+    if (!match.awayStartingSix || match.awayStartingSix.length !== 6) {
+      match.awayStartingSix = (match.awayBaseRotation || []).slice();
     }
-    render();
-  } else if (tool === 'draw' && curDraw) {
-    curDraw.pts.push(pos); render();
-  } else if (tool === 'arrow' && lineStart) {
-    render();
-    ctx.setLineDash([5, 5]);
-    ctx.strokeStyle = dColor + '88'; ctx.lineWidth = lineW * sx;
-    ctx.beginPath(); ctx.moveTo(lineStart.x * sx, lineStart.y * sy);
-    ctx.lineTo(pos.x * sx, pos.y * sy); ctx.stroke();
-    ctx.setLineDash([]);
-  } else if (tool === 'curve' && curvePoints.length > 0) {
-    render();
-    ctx.strokeStyle = dColor + '55'; ctx.lineWidth = lineW * sx; ctx.setLineDash([4, 4]);
-    const lp = curvePoints[curvePoints.length - 1];
-    ctx.beginPath(); ctx.moveTo(lp.x * sx, lp.y * sy); ctx.lineTo(pos.x * sx, pos.y * sy); ctx.stroke();
-    ctx.setLineDash([]);
-  }
-}
-
-function onUp(e) {
-  const pos = gpEnd(e);
-  if (tool === 'select') {
-    if (drag && dragMoved) commitHistory();
-    drag = null;
-    dragMoved = false;
-  }
-  else if (tool === 'draw' && curDraw) {
-    if (curDraw.pts.length > 2) drawings.push(curDraw);
-    curDraw = null; render(); commitHistory();
-  } else if (tool === 'arrow' && lineStart) {
-    if (Math.hypot(pos.x - lineStart.x, pos.y - lineStart.y) > 10)
-      drawings.push({ type: 'arrow', a: lineStart, b: pos, color: dColor, w: lineW });
-    lineStart = null; render(); commitHistory();
-  }
-}
-
-// CONTROLS
-
-function updateFlowInfo() {
-  const info = document.getElementById('flowInfo');
-  if (!info) return;
-  const serveTxt = rallyServeBy === 'us' ? 'Our serve' : 'Opponent serve';
-  const stateTxt = rallyState === 'pre_serve' ? 'pre-serve' : 'rally live';
-  info.textContent = `Flow: ${serveTxt} | ${stateTxt}`;
-}
-
-function flowStartOurServe() {
-  rallyServeBy = 'us';
-  rallyState = 'pre_serve';
-  setPhase('serving', { syncFlow: false, commit: false });
-  updateFlowInfo();
-  commitHistory();
-}
-
-function flowStartOppServe() {
-  rallyServeBy = 'opp';
-  rallyState = 'pre_serve';
-  setPhase('receive', { syncFlow: false, commit: false });
-  updateFlowInfo();
-  commitHistory();
-}
-
-function flowServeContact() {
-  if (rallyState !== 'pre_serve') return;
-  rallyState = 'rally';
-  if (rallyServeBy === 'us') {
-    setPhase('defense', { syncFlow: false, commit: false });
+    document.getElementById("homeNameInput").value = match.homeTeam;
+    document.getElementById("awayNameInput").value = match.awayTeam;
+    document.getElementById("matchIdInput").value = match.id;
+    const fs = match.firstServer || "home";
+    const radio = document.querySelector(`input[name="firstServe"][value="${fs}"]`);
+    if (radio) radio.checked = true;
   } else {
-    buildPlayers();
-    syncUIFromState();
-    updateInfoBox();
-    updateFlowInfo();
-    render();
+    createNewMatch();
   }
-  commitHistory();
-}
+  refreshFirstServeLabels();
+  renderAll();
+  window.addEventListener('load', () => {
+    window.obsClient.connect();
+  });
+})();
 
-function flowWinRally() {
-  if (rallyServeBy === 'opp') rot = rot === 6 ? 1 : rot + 1; // side-out rotation
-  rallyServeBy = 'us';
-  rallyState = 'pre_serve';
-  setPhase('serving', { syncFlow: false, commit: false });
-  updateFlowInfo();
-  commitHistory();
-}
-
-function flowLoseRally() {
-  rallyServeBy = 'opp';
-  rallyState = 'pre_serve';
-  setPhase('receive', { syncFlow: false, commit: false });
-  updateFlowInfo();
-  commitHistory();
-}
-
-function setTool(t) {
-  tool = t; curvePoints = [];
-  document.querySelectorAll('.tool-row button[id]').forEach(b => b.classList.remove('active'));
-  const btn = document.getElementById('t' + t.charAt(0).toUpperCase() + t.slice(1));
-  if (btn) btn.classList.add('active');
-  canvas.style.cursor = t === 'select' ? 'grab' : 'crosshair';
-  document.getElementById('sR').textContent = t.charAt(0).toUpperCase() + t.slice(1) + ' mode';
-  commitHistory();
-}
-
-function pickColor(c, el) {
-  dColor = c;
-  document.querySelectorAll('.cdot').forEach(d => d.classList.remove('active'));
-  if (el) el.classList.add('active');
-  commitHistory();
-}
-
-function setRot(r) {
-  rot = r;
-  buildPlayers();
-  syncUIFromState();
-  updateInfoBox();
-  render();
-  commitHistory();
-}
-
-function rotPrev() { setRot(rot === 1 ? 6 : rot - 1); }
-function rotNext() { setRot(rot === 6 ? 1 : rot + 1); }
-
-function setFormation(f) {
-  formation = f;
-  buildPlayers();
-  syncUIFromState();
-  updateInfoBox();
-  render();
-  commitHistory();
-}
-
-function setPhase(p, opts = {}) {
-  const syncFlow = opts.syncFlow !== false;
-  const shouldCommit = opts.commit !== false;
-  phase = p;
-  if (syncFlow) {
-    if (p === 'serving') {
-      rallyServeBy = 'us';
-      rallyState = 'pre_serve';
-    } else if (p === 'receive') {
-      rallyServeBy = 'opp';
-      rallyState = 'pre_serve';
-    } else {
-      rallyState = 'rally';
-    }
-  }
-  buildPlayers();
-  syncUIFromState();
-  updateInfoBox();
-  updateFlowInfo();
-  render();
-  if (shouldCommit) commitHistory();
-}
-
-function setRecvShape(s) {
-  recvShape = s;
-  if (phase !== 'receive') setPhase('receive');
-  else {
-    buildPlayers();
-    updateInfoBox();
-    render();
-    commitHistory();
-  }
-}
-function setDefVs(d) {
-  defVs = d;
-  if (phase !== 'defense') setPhase('defense');
-  else {
-    buildPlayers();
-    updateInfoBox();
-    render();
-    commitHistory();
-  }
-}
-
-function toggleBall() {
-  if (showBall) { showBall = false; ball = null; }
-  else { showBall = true; ball = { x: C, y: NET_Y - 60 }; }
-  render();
-  syncUIFromState();
-  commitHistory();
-}
-
-function toggleZoneNumbers() {
-  showZoneNumbers = !showZoneNumbers;
-  syncUIFromState();
-  render();
-  commitHistory();
-}
-
-function togglePresentationMode(forceState = null) {
-  presentationMode = forceState === null ? !presentationMode : !!forceState;
-  document.body.classList.toggle('presentation-mode', presentationMode);
-  syncUIFromState();
-  setTimeout(resize, 0);
-}
-
-function clearDraw() {
-  drawings = [];
-  render();
-  commitHistory();
-}
-function resetAll() {
-  drawings = []; ball = null; showBall = false; rot = 1; phase = 'serving';
-  formation = '5-1'; recvShape = '3p'; defVs = 'z4';
-  playerNumbers = {};
-  showOpp = false;
-  showZoneNumbers = true;
-  rallyServeBy = 'us';
-  rallyState = 'pre_serve';
-  buildPlayers();
-  syncUIFromState();
-  updateInfoBox();
-  updateFlowInfo();
-  render();
-  commitHistory();
-}
-
-function hideCtx() { document.getElementById('ctxMenu').style.display = 'none'; }
-function ctxNum() {
-  if (!ctxTarget) return; hideCtx();
-  const n = prompt('Player number:', ctxTarget.obj.num || '');
-  if (n !== null) {
-    ctxTarget.obj.num = n;
-    if (ctxTarget.obj.origRole) playerNumbers[ctxTarget.obj.origRole] = n;
-    render();
-    commitHistory();
-  }
-}
-function ctxRole() {
-  if (!ctxTarget) return; hideCtx();
-  const r = prompt('New role (S, OH, MB, OPP, L):', ctxTarget.obj.role);
-  if (r && ROLES[r.toUpperCase()]) {
-    ctxTarget.obj.role = r.toUpperCase();
-    render();
-    commitHistory();
-  }
-}
-function ctxDel() {
-  if (!ctxTarget) return; hideCtx();
-  if (ctxTarget.type === 'player') players.splice(ctxTarget.idx, 1);
-  ctxTarget = null;
-  render();
-  commitHistory();
-}
-
-function updateStatus() {
-  document.getElementById('sL').textContent =
-    `${formation} | R${rot} | ${phase.charAt(0).toUpperCase() + phase.slice(1)}` +
-    (phase === 'defense' ? ` vs ${defVs}` : '') +
-    ` | ${players.length} players`;
-}
-
-function updateInfoBox() {
-  const info = document.getElementById('recvInfo');
-  if (!info) return;
-  if (phase === 'receive') {
-    const setter = players.find(p => p.origRole === 'S');
-    const sZone = setter ? setter.zone : '?';
-    const sRow = setter ? (setter.isFront ? 'FRONT' : 'BACK') : '?';
-    info.textContent = `Setter in Z${sZone} (${sRow} row). ${sRow === 'BACK' ? 'Setter penetrates to net.' : 'Setter already front.'}`;
-  } else if (phase === 'defense') {
-    info.textContent = `Defending vs attack from ${defVs.toUpperCase()}. Blockers shift to that zone, back row adjusts.`;
-  } else {
-    info.textContent = `Z1 serves. Other players in base positions.`;
-  }
-}
-
-function shade(c, pct) {
-  const n = parseInt(c.replace('#', ''), 16), a = Math.round(2.55 * pct);
-  const R = Math.min(255, Math.max(0, (n >> 16) + a));
-  const G = Math.min(255, Math.max(0, (n >> 8 & 0xFF) + a));
-  const B = Math.min(255, Math.max(0, (n & 0xFF) + a));
-  return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
-}
-
-// BOOT
-buildPlayers();
-syncUIFromState();
-updateInfoBox();
-updateFlowInfo();
-setTimeout(resize, 50);
-setTimeout(() => commitHistory(), 80);
