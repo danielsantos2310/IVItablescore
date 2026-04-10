@@ -164,7 +164,9 @@ const TEAM_LOGOS = {
   "msvc beavers": "MSVC-Beavers.png",
   "ucd": "ucd.jpg",
   "ivi dinosaurs": "Brasão - PNG.png",
-  "ivi vixen": "Brasão - PNG.png"
+  "ivi vixen": "Brasão - PNG.png",
+  "ivi dragons": "Brasão - PNG.png",
+  "cork lions": "corklions.png"
 };
 
 const TEAM_LOGO_ALIASES = {
@@ -182,7 +184,10 @@ const TEAM_LOGO_ALIASES = {
   "ivi dinosaur": "ivi dinosaurs",
   "dinosaurs": "ivi dinosaurs",
   "vixen": "ivi vixen",
-  "ivi vixens": "ivi vixen"
+  "ivi vixens": "ivi vixen",
+  "ivi dragons": "ivi dragons",
+  "dragons": "ivi dragons",
+  "cork lions": "cork lions"
 };
 
 function normalizeTeamName(name) {
