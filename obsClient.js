@@ -1,8 +1,3 @@
-// Load these from OBS: Tools -> WebSocket Server Settings -> Server Settings
-const IP_ADDRESS = "IP_ADDRESS"
-const PORT = "4455"
-const PASSWORD = "PASSWORD"
-
 class OBSClient {
     constructor() {
         this.obs = null;
