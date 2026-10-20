@@ -8,30 +8,6 @@
       --muted: #8fa2c2;
     }
 
-    html {
-      scrollbar-color: #294867 #081a2a;
-      scrollbar-width: thin;
-    }
-
-    *::-webkit-scrollbar {
-      width: 10px;
-      height: 10px;
-    }
-
-    *::-webkit-scrollbar-track {
-      background: #081a2a;
-    }
-
-    *::-webkit-scrollbar-thumb {
-      background: #294867;
-      border: 2px solid #081a2a;
-      border-radius: 999px;
-    }
-
-    *::-webkit-scrollbar-thumb:hover {
-      background: #3a6289;
-    }
-
     * {
       box-sizing: border-box;
     }
@@ -62,34 +38,11 @@
       flex-wrap: wrap;
     }
 
-    .brand-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      min-width: 220px;
-    }
-
-    .club-logo {
-      width: 52px;
-      height: 52px;
-      object-fit: contain;
-      flex: 0 0 auto;
-    }
-
-    .season-title {
-      font-size: 20px;
-      font-weight: 800;
-      color: #ffffff;
-      line-height: 1.1;
-      white-space: nowrap;
-    }
-
     .match-setup {
       display: flex;
       align-items: center;
       gap: 8px;
       flex-wrap: wrap;
-      min-width: 0;
     }
 
     .serve-choice {
@@ -153,11 +106,6 @@
       box-shadow: 0 1px 4px rgba(0,0,0,0.6);
     }
 
-    :focus-visible {
-      outline: 3px solid #f4d35e;
-      outline-offset: 3px;
-    }
-
     .hidden {
       display: none !important;
     }
@@ -178,7 +126,6 @@
       flex-direction: column;
       gap: 16px;
       box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-      overflow-y: auto;
     }
 
     .teams-row {
@@ -265,8 +212,6 @@
       font-size: 26px;
       padding: 18px;
       border-radius: 20px;
-      min-width: 0;
-      overflow-wrap: anywhere;
     }
 
     .big-btn.left {
@@ -291,12 +236,6 @@
     .btn.sfx-active {
       background: #2b4a6b;
       color: #ffffff;
-    }
-
-    .btn.switch-due {
-      background: #ff6f00;
-      color: #ffffff;
-      box-shadow: 0 0 0 3px rgba(255, 111, 0, 0.25), 0 2px 8px rgba(0,0,0,0.4);
     }
 
     .tags-row {
@@ -342,7 +281,6 @@
       flex-direction: column;
       gap: 6px;
       font-size: 13px;
-      min-width: 0;
     }
 
     .controls-group h3 {
@@ -358,58 +296,17 @@
       justify-content: center;
     }
 
-    /* Rotation and serve area */
-    .rotation-section {
-      border-top: 1px solid rgba(255,255,255,0.08);
-      padding-top: 12px;
-    }
-
-    .rotation-section-head,
-    .rotation-team-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    .rotation-section-head {
-      margin-bottom: 10px;
-    }
-
-    .rotation-section-head h2 {
-      margin: 0;
-      color: var(--text);
-      font-size: 15px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-
-    .rotation-section-head p {
-      margin: 3px 0 0;
-      color: var(--muted);
-      font-size: 11px;
-    }
-
-    .rotation-notice {
-      background: rgba(0, 166, 81, 0.13);
-      border-left: 3px solid var(--accent);
-      color: #b6f5d2;
-      font-size: 12px;
-      font-weight: 700;
-      margin-bottom: 8px;
-      padding: 7px 9px;
-    }
-
+    /* Rotation area */
     .rotation-wrapper {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
+      gap: 12px;
     }
 
     .rotation-team {
       background: #081a2a;
-      border-radius: 8px;
-      padding: 10px;
+      border-radius: 12px;
+      padding: 8px;
       font-size: 13px;
       display: flex;
       flex-direction: column;
@@ -424,52 +321,6 @@
       color: var(--muted);
     }
 
-    .rotation-team-heading {
-      align-items: center;
-      display: flex;
-      gap: 6px;
-      min-width: 0;
-    }
-
-    .rotation-system {
-      background: #0b1e30;
-      border: 1px solid #294867;
-      border-radius: 5px;
-      color: #a9ceff;
-      font-size: 10px;
-      font-weight: 700;
-      padding: 3px 4px;
-    }
-
-    .rotation-team.is-serving {
-      border: 1px solid rgba(0, 166, 81, 0.65);
-    }
-
-    .serve-state {
-      border: 1px solid #294867;
-      border-radius: 999px;
-      color: var(--muted);
-      font-size: 10px;
-      font-weight: 700;
-      padding: 3px 7px;
-      text-transform: uppercase;
-    }
-
-    .rotation-team.is-serving .serve-state {
-      background: rgba(0, 166, 81, 0.16);
-      border-color: var(--accent);
-      color: #86f0b7;
-    }
-
-    .rotation-court-label {
-      border-bottom: 2px solid #d8e5f4;
-      color: var(--muted);
-      font-size: 9px;
-      padding-bottom: 2px;
-      text-align: center;
-      text-transform: uppercase;
-    }
-
     .rotation-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -478,32 +329,13 @@
     }
 
     .rot-pos {
-      border-radius: 6px;
+      border-radius: 10px;
       border: 1px solid #203854;
       background: #0b1e30;
       color: var(--text);
-      min-height: 42px;
-      padding: 6px 4px;
+      padding: 8px 0;
       font-size: 14px;
       text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 1px;
-    }
-
-    .rot-pos-label {
-      color: var(--muted);
-      font-size: 9px;
-      font-weight: 700;
-      line-height: 1;
-    }
-
-    .rot-pos-player {
-      font-size: 15px;
-      font-weight: 800;
-      line-height: 1.1;
     }
 
     .rot-pos.libero-active {
@@ -519,348 +351,6 @@
     .rotation-hint {
       font-size: 11px;
       color: var(--muted);
-    }
-
-    .serve-order-row {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 6px;
-    }
-
-    .serve-order-row > div {
-      min-width: 0;
-    }
-
-    .serve-order-row span,
-    .server-check label {
-      color: var(--muted);
-      display: block;
-      font-size: 9px;
-      text-transform: uppercase;
-    }
-
-    .serve-order-row strong {
-      display: block;
-      font-size: 12px;
-      overflow-wrap: anywhere;
-    }
-
-    .server-check {
-      border-top: 1px solid rgba(255,255,255,0.07);
-      padding-top: 7px;
-    }
-
-    .server-check-controls {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 6px;
-      margin-top: 4px;
-    }
-
-    .server-check input {
-      background: #071525;
-      border: 1px solid #294867;
-      border-radius: 6px;
-      color: var(--text);
-      min-width: 0;
-      padding: 7px 8px;
-      width: 100%;
-    }
-
-    .server-check .btn {
-      border-radius: 6px;
-      padding: 7px 10px;
-    }
-
-    .server-check-result {
-      color: var(--muted);
-      font-size: 10px;
-      margin-top: 4px;
-      min-height: 14px;
-    }
-
-    .server-check-result.ok {
-      color: #86f0b7;
-    }
-
-    .server-check-result.error {
-      color: #ff9b92;
-    }
-
-    .rotation-empty {
-      background: rgba(255, 196, 122, 0.08);
-      border: 1px solid rgba(255, 196, 122, 0.35);
-      border-radius: 6px;
-      color: #ffc47a;
-      font-size: 11px;
-      margin-top: 8px;
-      padding: 8px;
-      text-align: center;
-    }
-
-    .serve-receive-example {
-      border-top: 1px solid rgba(255,255,255,0.08);
-      margin-top: 12px;
-      padding-top: 12px;
-    }
-
-    .serve-receive-head {
-      align-items: flex-start;
-      display: flex;
-      gap: 10px;
-      justify-content: space-between;
-    }
-
-    .serve-receive-head h2 {
-      color: var(--text);
-      font-size: 14px;
-      letter-spacing: 0.06em;
-      margin: 0;
-      text-transform: uppercase;
-    }
-
-    .serve-receive-head p,
-    .serve-receive-note {
-      color: var(--muted);
-      font-size: 11px;
-      line-height: 1.35;
-      margin: 3px 0 0;
-    }
-
-    .serve-receive-team {
-      background: rgba(32, 72, 103, 0.52);
-      border: 1px solid #294867;
-      border-radius: 999px;
-      color: #a9ceff;
-      font-size: 10px;
-      font-weight: 700;
-      padding: 4px 7px;
-      text-transform: uppercase;
-      white-space: nowrap;
-    }
-
-    .receive-court {
-      background: #081a2a;
-      border: 1px solid #203854;
-      border-radius: 8px;
-      margin: 10px auto 0;
-      max-width: 410px;
-      padding: 22px 28px 26px;
-    }
-
-    .receive-court-surface {
-      aspect-ratio: 0.95 / 1;
-      background: #0b1e30;
-      border: 2px solid #42637f;
-      border-radius: 4px;
-      box-sizing: border-box;
-      position: relative;
-    }
-
-    .receive-court-surface::before {
-      border-top: 1px dashed #42637f;
-      content: "";
-      left: 0;
-      position: absolute;
-      right: 0;
-      top: 40%;
-    }
-
-    .receive-court-surface::after {
-      border-top: 1px solid #42637f;
-      content: "";
-      left: 0;
-      position: absolute;
-      right: 0;
-      top: 50%;
-    }
-
-    .receive-court-net {
-      background: #071525;
-      border-bottom: 1px solid #d8e5f4;
-      border-top: 1px solid #d8e5f4;
-      color: #d8e5f4;
-      font-size: 10px;
-      font-weight: 800;
-      left: -2px;
-      letter-spacing: 0.12em;
-      padding: 3px 0;
-      position: absolute;
-      right: -2px;
-      text-align: center;
-      text-transform: uppercase;
-      top: -27px;
-    }
-
-    .receive-anchor {
-      color: rgba(143, 162, 194, 0.3);
-      font-size: clamp(19px, 5vw, 30px);
-      font-weight: 800;
-      position: absolute;
-      transform: translate(-50%, -50%);
-    }
-
-    .anchor-p4 { left: 17%; top: 16%; }
-    .anchor-p3 { left: 50%; top: 16%; }
-    .anchor-p2 { left: 83%; top: 16%; }
-    .anchor-p5 { left: 17%; top: 72%; }
-    .anchor-p6 { left: 50%; top: 72%; }
-    .anchor-p1 { left: 83%; top: 72%; }
-
-    .receive-player {
-      align-items: center;
-      background: #102a43;
-      border: 1px solid #42637f;
-      border-radius: 6px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-      color: var(--text);
-      display: flex;
-      flex-direction: column;
-      font-size: clamp(13px, 3.6vw, 18px);
-      font-weight: 800;
-      height: clamp(34px, 8vw, 42px);
-      justify-content: center;
-      position: absolute;
-      transform: translate(-50%, -50%);
-      width: clamp(38px, 9vw, 52px);
-      z-index: 1;
-    }
-
-    .receive-player > span {
-      font-size: 10px;
-      line-height: 1;
-    }
-
-    .receive-player > strong {
-      font-size: clamp(12px, 3vw, 15px);
-      line-height: 1.05;
-    }
-
-    .role-opposite { left: 10%; top: 13%; }
-    .role-middle-two { left: 26%; top: 10%; }
-    .role-middle-one { left: -9%; top: 77%; }
-    .role-hitter-two { left: 23%; top: 69%; }
-    .role-libero { left: 50%; top: 78%; }
-    .role-hitter-one { left: 78%; top: 69%; }
-    .role-setter { left: 90%; top: 80%; }
-
-    /* Rotation 2: the team has side-out rotated once, served, and is receiving again. */
-    .serve-receive-example[data-template="rotation-2"] .role-opposite { left: 62%; top: 11%; }
-    .serve-receive-example[data-template="rotation-2"] .role-middle-two { left: 79%; top: 25%; }
-    .serve-receive-example[data-template="rotation-2"] .role-setter { left: 54%; top: 28%; z-index: 2; }
-
-    /* Rotation 3: M1 returns to the front row while the libero replaces M2 in right back. */
-    .serve-receive-example[data-template="rotation-3"] .role-middle-one {
-      background: #102a43;
-      border-color: #42637f;
-      color: var(--text);
-      left: 7%;
-      opacity: 1;
-      top: 8%;
-    }
-    .serve-receive-example[data-template="rotation-3"] .role-middle-two {
-      background: #0d2639;
-      border-color: #42637f;
-      color: var(--muted);
-      left: -9%;
-      opacity: 0.9;
-      top: 77%;
-    }
-    .serve-receive-example[data-template="rotation-3"] .role-opposite { left: 93%; top: 12%; }
-    .serve-receive-example[data-template="rotation-3"] .role-setter { left: 39%; top: 16%; }
-    .serve-receive-example[data-template="rotation-3"] .role-hitter-one { left: 50%; top: 79%; }
-    .serve-receive-example[data-template="rotation-3"] .role-libero { left: 75%; top: 68%; }
-
-    /* Rotation 4: setter starts at front left; the opposite is in right back. */
-    .serve-receive-example[data-template="rotation-4"] .role-middle-one {
-      background: #102a43;
-      border-color: #42637f;
-      color: var(--text);
-      left: 18%;
-      opacity: 1;
-      top: 17%;
-    }
-    .serve-receive-example[data-template="rotation-4"] .role-middle-two {
-      background: #0d2639;
-      border-color: #42637f;
-      color: var(--muted);
-      left: -9%;
-      opacity: 0.9;
-      top: 77%;
-    }
-    .serve-receive-example[data-template="rotation-4"] .role-setter { left: 7%; top: 7%; }
-    .serve-receive-example[data-template="rotation-4"] .role-opposite { left: 84%; top: 85%; }
-
-    /* Rotation 5: setter and M1 are across the front row; the opposite is back middle. */
-    .serve-receive-example[data-template="rotation-5"] .role-middle-one {
-      background: #102a43;
-      border-color: #42637f;
-      color: var(--text);
-      left: 82%;
-      opacity: 1;
-      top: 17%;
-    }
-    .serve-receive-example[data-template="rotation-5"] .role-middle-two {
-      background: #0d2639;
-      border-color: #42637f;
-      color: var(--muted);
-      left: -9%;
-      opacity: 0.9;
-      top: 77%;
-    }
-    .serve-receive-example[data-template="rotation-5"] .role-setter { left: 66%; top: 10%; }
-    .serve-receive-example[data-template="rotation-5"] .role-opposite { left: 62%; top: 85%; }
-    .serve-receive-example[data-template="rotation-5"] .role-hitter-one { left: 22%; top: 69%; }
-    .serve-receive-example[data-template="rotation-5"] .role-hitter-two { left: 78%; top: 69%; }
-
-    /* Rotation 6: M2 is active at front left and the libero replaces M1. */
-    .serve-receive-example[data-template="rotation-6"] .role-middle-one {
-      background: #0d2639;
-      border-color: #42637f;
-      color: var(--muted);
-      left: -9%;
-      opacity: 0.9;
-      top: 77%;
-    }
-    .serve-receive-example[data-template="rotation-6"] .role-middle-two {
-      background: #102a43;
-      border-color: #42637f;
-      color: var(--text);
-      left: 7%;
-      opacity: 1;
-      top: 8%;
-    }
-    .serve-receive-example[data-template="rotation-6"] .role-setter { left: 78%; top: 8%; }
-    .serve-receive-example[data-template="rotation-6"] .role-opposite { left: 30%; top: 92%; }
-    .serve-receive-example[data-template="rotation-6"] .role-hitter-one { left: 23%; top: 62%; }
-    .serve-receive-example[data-template="rotation-6"] .role-hitter-two { left: 50%; top: 74%; }
-    .serve-receive-example[data-template="rotation-6"] .role-libero { left: 78%; top: 62%; }
-
-    .serve-receive-example.receive-template-pending .receive-court {
-      opacity: 0.42;
-    }
-
-    .receive-player.role-libero {
-      background: rgba(0, 166, 81, 0.18);
-      border-color: var(--accent);
-      color: #86f0b7;
-    }
-
-    .receive-player.role-setter {
-      background: rgba(255, 111, 0, 0.18);
-      border-color: var(--accent2);
-      color: #ffc47a;
-    }
-
-    .receive-player.is-replaced {
-      background: #0d2639;
-      border-color: #42637f;
-      color: var(--muted);
-      opacity: 0.9;
-    }
-
-    .serve-receive-note {
-      margin-top: 8px;
     }
 
     .rotation-footer {
@@ -881,52 +371,8 @@
       flex-direction: column;
       min-height: 0;
       box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-      height: 100%;
-      max-height: none;
-      overflow: hidden;
-    }
-
-    .timeline-panel {
-      display: flex;
-      flex: 0 0 180px;
-      flex-direction: column;
-      min-height: 180px;
-      overflow: hidden;
-      transition: flex-basis 180ms ease, min-height 180ms ease;
-    }
-
-    .timeline-panel.expanded {
-      flex-basis: 46%;
-      min-height: 260px;
-    }
-
-    .timeline-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 6px;
-    }
-
-    .timeline-head h2 {
-      margin: 0;
-    }
-
-    .timeline-toggle {
-      flex: 0 0 auto;
-      border-radius: 6px;
-      padding: 4px 9px;
-      font-size: 10px;
-      line-height: 1.2;
-    }
-
-    .right-lower-stack {
-      border-top: 1px solid rgba(255,255,255,0.08);
-      flex: 1 1 auto;
-      min-height: 0;
+      max-height: 60vh;
       overflow-y: auto;
-      scrollbar-color: #294867 #081a2a;
-      scrollbar-width: thin;
     }
 
     .log-area h2 {
@@ -956,244 +402,33 @@
       font-size: 12px;
     }
 
-    .lineup-workspace {
-      border-top: none;
-      flex: 0 0 auto;
-      margin-top: 0;
-      padding-top: 10px;
+    .sound-board {
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,0.08);
     }
 
-    .lineup-workspace-head {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-
-    .lineup-workspace-head h2 {
-      color: var(--text);
-      font-size: 15px;
-      margin: 0;
+    .sound-board h3 {
+      margin: 0 0 8px;
+      font-size: 13px;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-
-    .lineup-workspace-head p {
+      letter-spacing: 0.08em;
       color: var(--muted);
-      font-size: 11px;
-      margin: 3px 0 0;
     }
 
-    .lineup-editors {
+    .sound-buttons {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(2, 1fr);
       gap: 8px;
     }
 
-    .lineup-team-editor {
-      background: #081a2a;
-      border: 1px solid #203854;
-      border-radius: 8px;
-      min-width: 0;
-      padding: 9px;
-    }
-
-    .lineup-team-editor h3 {
-      color: var(--text);
+    .sound-buttons .btn {
+      width: 100%;
+      padding: 8px 6px;
+      border-radius: 12px;
       font-size: 12px;
-      margin: 0 0 8px;
-      overflow-wrap: anywhere;
-      text-transform: uppercase;
-    }
-
-    .lineup-field-label {
-      color: var(--muted);
-      font-size: 9px;
-      margin: 8px 0 4px;
-      text-transform: uppercase;
-    }
-
-    .roster-number-grid {
-      display: grid;
-      grid-template-columns: repeat(7, minmax(0, 1fr));
-      gap: 4px;
-    }
-
-    .lineup-number-field,
-    .starting-position-field {
-      min-width: 0;
-      position: relative;
-    }
-
-    .lineup-number-field label,
-    .starting-position-field label {
-      color: var(--muted);
-      display: block;
-      font-size: 8px;
-      margin-bottom: 2px;
+      line-height: 1.2;
       text-align: center;
-    }
-
-    .lineup-number-field input,
-    .starting-position-field input {
-      background: #071525;
-      border: 1px solid #294867;
-      border-radius: 5px;
-      color: var(--text);
-      font-size: 12px;
-      font-weight: 700;
-      min-width: 0;
-      padding: 6px 2px;
-      text-align: center;
-      width: 100%;
-    }
-
-    .lineup-number-field input:focus-visible,
-    .starting-position-field input:focus-visible,
-    .server-check input:focus-visible {
-      border-color: #7db7ee;
-      box-shadow: 0 0 0 2px rgba(125, 183, 238, 0.28);
-      outline: none;
-    }
-
-    .lineup-number-field.libero input {
-      border-color: var(--accent2);
-      background: rgba(255, 111, 0, 0.08);
-    }
-
-    .lineup-number-field.libero label {
-      color: #ffc47a;
-      font-weight: 800;
-    }
-
-    .libero-assignment {
-      background: rgba(255, 111, 0, 0.06);
-      border: 1px solid rgba(255, 111, 0, 0.32);
-      border-radius: 6px;
-      display: grid;
-      grid-template-columns: 1.2fr 1fr 1fr;
-      gap: 5px;
-      margin-top: 8px;
-      padding: 7px;
-    }
-
-    .libero-assignment-field {
-      min-width: 0;
-    }
-
-    .libero-assignment-field label {
-      color: #ffc47a;
-      display: block;
-      font-size: 8px;
-      font-weight: 700;
-      margin-bottom: 3px;
-      text-transform: uppercase;
-    }
-
-    .libero-assignment-field input,
-    .libero-assignment-field select {
-      appearance: auto;
-      background: #071525;
-      border: 1px solid #8b5926;
-      border-radius: 5px;
-      color: var(--text);
-      font-size: 11px;
-      font-weight: 700;
-      min-width: 0;
-      padding: 6px 4px;
-      width: 100%;
-    }
-
-    .libero-assignment-field input {
-      text-align: center;
-    }
-
-    .libero-assignment-field input:focus-visible,
-    .libero-assignment-field select:focus-visible {
-      border-color: #ffb15c;
-      box-shadow: 0 0 0 2px rgba(255, 111, 0, 0.24);
-      outline: none;
-    }
-
-    .starting-position-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 5px;
-    }
-
-    .five-one-role-map {
-      background: rgba(32, 72, 103, 0.16);
-      border: 1px solid #294867;
-      border-radius: 6px;
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 5px;
-      margin-top: 8px;
-      padding: 7px;
-    }
-
-    .five-one-role-map-title {
-      color: #a9ceff;
-      font-size: 8px;
-      font-weight: 700;
-      grid-column: 1 / -1;
-      text-transform: uppercase;
-    }
-
-    .five-one-role-field {
-      min-width: 0;
-    }
-
-    .five-one-role-field label {
-      color: var(--muted);
-      display: block;
-      font-size: 8px;
-      font-weight: 700;
-      margin-bottom: 3px;
-      text-transform: uppercase;
-    }
-
-    .five-one-role-field select {
-      background: #071525;
-      border: 1px solid #294867;
-      border-radius: 5px;
-      color: var(--text);
-      font-size: 11px;
-      font-weight: 700;
-      min-width: 0;
-      padding: 6px 4px;
-      width: 100%;
-    }
-
-    .lineup-validation,
-    .lineup-save-status {
-      color: var(--muted);
-      font-size: 10px;
-      min-height: 15px;
-      margin-top: 5px;
-    }
-
-    .lineup-validation.ok,
-    .lineup-save-status.ok {
-      color: #86f0b7;
-    }
-
-    .lineup-validation.error,
-    .lineup-save-status.error {
-      color: #ffaaa3;
-    }
-
-    .lineup-save-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin: 9px 0 3px;
-    }
-
-    .lineup-save-row .btn,
-    .lineup-workspace-head .btn {
-      border-radius: 6px;
     }
 
     .log-item {
@@ -1309,7 +544,7 @@
       }
       .log-area {
         padding: 10px;
-        max-height: none;
+        max-height: 55vh;
       }
       .log-area h2 {
         margin-bottom: 6px;
@@ -1321,6 +556,13 @@
       }
       .log-list {
         font-size: 12px;
+      }
+      .sound-buttons {
+        gap: 7px;
+      }
+      .sound-buttons .btn {
+        font-size: 12px;
+        padding: 8px 6px;
       }
       footer {
         gap: 6px;
@@ -1358,156 +600,13 @@
       .tag {
         padding: 1px 6px;
       }
-    }
-
-    @media (max-width: 720px) {
-      body {
-        height: auto;
-        min-height: 100vh;
-      }
-      .app {
-        min-height: 100vh;
-        height: auto;
-        padding: 10px;
-        gap: 10px;
-      }
-      header {
-        align-items: flex-start;
-      }
-      .brand-header {
-        width: 100%;
-      }
-      .club-logo {
-        width: 46px;
-        height: 46px;
-      }
-      .season-title {
-        font-size: 18px;
-      }
-      .match-setup {
-        width: 100%;
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px;
-      }
-      .match-setup input,
-      .serve-choice {
-        min-width: 0;
-        width: 100%;
-      }
-      .match-setup .btn {
-        width: 100%;
-        justify-content: center;
-      }
-      .serve-options {
-        align-items: flex-start;
-        min-width: 0;
-      }
-      .serve-options label,
-      .serve-options span {
-        min-width: 0;
-        overflow-wrap: anywhere;
-        white-space: normal;
-      }
-      .layout {
-        display: block;
-      }
-      .score-area {
-        border-radius: 12px;
-        padding: 10px;
-        gap: 10px;
-      }
-      .log-area {
-        display: none;
-      }
-      .log-area.lineup-open {
-        display: flex;
-        margin-top: 10px;
-        max-height: none;
-        overflow: visible;
-      }
-      .log-area.lineup-open .timeline-panel {
-        display: none;
-      }
-      .lineup-workspace {
-        border-top: none;
-        margin-top: 0;
-        padding-top: 0;
-      }
-      .right-lower-stack {
-        border-top: none;
-        overflow: visible;
-      }
-      .lineup-editors {
-        grid-template-columns: 1fr;
-      }
-      .roster-number-grid {
-        grid-template-columns: repeat(7, minmax(0, 1fr));
-      }
-      .teams-row {
-        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-        gap: 7px;
-      }
-      .team-card {
-        min-width: 0;
-        padding: 8px;
-        border-radius: 10px;
-      }
-      .team-logo {
-        width: 44px;
-        height: 44px;
-      }
-      .team-name {
-        font-size: 14px;
-        line-height: 1.15;
-        overflow-wrap: anywhere;
-      }
-      .main-score {
-        font-size: 58px;
-      }
-      .set-info {
-        min-width: 58px;
-        padding: 8px;
-      }
-      .set-info strong {
-        font-size: 30px;
-      }
-      .big-buttons-row,
-      .controls-area {
-        gap: 7px;
-      }
-      .big-btn {
-        font-size: 18px;
-        padding: 12px 8px;
-        border-radius: 14px;
-      }
-      .controls-group {
-        padding: 8px;
+      .sound-buttons {
+        grid-template-columns: repeat(2, 1fr);
         gap: 6px;
       }
-      .controls-group h3 {
+      .sound-buttons .btn {
         font-size: 12px;
-      }
-      .tags-row,
-      .set-summary-row {
-        display: none;
-      }
-      footer {
-        align-items: stretch;
-        flex-direction: column;
-      }
-      footer > div:last-child {
-        display: grid !important;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 6px !important;
-      }
-      footer .btn {
-        width: 100%;
         padding: 8px 6px;
-        font-size: 11px;
-      }
-      .timers {
-        justify-content: space-between;
       }
     }
 
@@ -1555,14 +654,6 @@
       box-shadow: 0 16px 40px rgba(0,0,0,0.6);
       border: 1px solid #203854;
     }
-    .referee-share-panel { width: min(92vw, 440px); }
-    .referee-share-body { display: grid; gap: 12px; margin-top: 14px; }
-    .referee-qr { width: 220px; min-height: 220px; display: grid; place-items: center; margin: 0 auto; padding: 10px; background: #f5f9ff; border-radius: 8px; }
-    .referee-qr:empty::after { content: "Preparing QR"; color: #17324f; font-size: 13px; }
-    .referee-share-status { min-height: 18px; margin: 0; text-align: center; font-size: 12px; color: var(--muted); }
-    .referee-share-status.error { color: #ff9c9c; }
-    .referee-link-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
-    .referee-link-row input { min-width: 0; background: #0b1e30; border: 1px solid #203854; color: var(--text); border-radius: 6px; padding: 8px; font-size: 12px; }
     .positions-panel {
       width: min(96vw, 1200px);
       max-width: 1200px;
@@ -1665,7 +756,6 @@
     }
     .summary-value {
       color: var(--text);
-      white-space: pre-line;
     }
 
     .card-entry-panel {
@@ -1694,148 +784,6 @@
       border-radius: 10px;
       font-size: 18px;
       text-align: center;
-    }
-
-    .overlap-panel {
-      width: min(94vw, 680px);
-      max-width: 680px;
-    }
-
-    .overlap-team-tabs {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-
-    .overlap-team-tabs .btn {
-      border-radius: 6px;
-    }
-
-    .overlap-team-tabs .active {
-      background: #2b4a6b;
-      color: #ffffff;
-      box-shadow: inset 0 0 0 1px #5f89b2;
-    }
-
-    .overlap-court {
-      aspect-ratio: 16 / 9;
-      background: #126848;
-      border: 3px solid #d8e5f4;
-      border-radius: 6px;
-      overflow: hidden;
-      position: relative;
-      touch-action: none;
-    }
-
-    .overlap-court::before {
-      content: "";
-      position: absolute;
-      inset: 48% 0 auto;
-      border-top: 1px dashed rgba(255,255,255,0.42);
-    }
-
-    .overlap-net {
-      position: absolute;
-      inset: 0 0 auto;
-      background: #e5f0ff;
-      color: #071525;
-      font-size: 10px;
-      font-weight: 800;
-      padding: 3px;
-      text-align: center;
-      text-transform: uppercase;
-      z-index: 2;
-    }
-
-    .overlap-marker {
-      position: absolute;
-      width: 54px;
-      height: 54px;
-      border: 2px solid #ffffff;
-      border-radius: 50%;
-      background: #0b1e30;
-      color: #ffffff;
-      cursor: grab;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      line-height: 1;
-      transform: translate(-50%, -50%);
-      user-select: none;
-      z-index: 3;
-    }
-
-    .overlap-marker span {
-      color: #a8bdd7;
-      font-size: 9px;
-      margin-bottom: 3px;
-    }
-
-    .overlap-marker strong {
-      font-size: 16px;
-    }
-
-    .overlap-marker.selected {
-      border-color: #ffb15c;
-      box-shadow: 0 0 0 4px rgba(255, 111, 0, 0.3);
-    }
-
-    .overlap-controls {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      justify-content: space-between;
-      margin-top: 10px;
-      flex-wrap: wrap;
-    }
-
-    .overlap-selected {
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .overlap-selected strong {
-      color: var(--text);
-    }
-
-    .overlap-nudge {
-      display: grid;
-      grid-template-columns: repeat(4, auto);
-      gap: 5px;
-    }
-
-    .overlap-nudge .btn,
-    #btnResetOverlap {
-      border-radius: 6px;
-      padding: 7px 10px;
-    }
-
-    .overlap-result {
-      border-radius: 6px;
-      font-size: 12px;
-      margin-top: 10px;
-      min-height: 38px;
-      padding: 9px 10px;
-    }
-
-    .overlap-result.ok {
-      background: rgba(0, 166, 81, 0.12);
-      border: 1px solid rgba(0, 166, 81, 0.55);
-      color: #86f0b7;
-    }
-
-    .overlap-result.error {
-      background: rgba(220, 69, 60, 0.12);
-      border: 1px solid rgba(220, 69, 60, 0.55);
-      color: #ffaaa3;
-    }
-
-    .overlap-note {
-      color: var(--muted);
-      font-size: 10px;
-      margin: 8px 0 0;
     }
 
     /* Register page */
@@ -2047,41 +995,4 @@
         font-size: 24px;
       }
     }
-
-    @media (max-width: 720px) {
-      .rotation-section-head {
-        align-items: flex-start;
-      }
-      .rotation-section-head p {
-        display: none;
-      }
-      .rotation-wrapper {
-        grid-template-columns: 1fr;
-      }
-      .server-check-controls {
-        grid-template-columns: minmax(0, 1fr) 88px;
-      }
-      .overlap-panel {
-        max-height: calc(100dvh - 20px);
-        overflow-y: auto;
-        width: calc(100vw - 20px);
-      }
-      .overlap-marker {
-        width: 46px;
-        height: 46px;
-      }
-      .overlap-controls {
-        align-items: stretch;
-        flex-direction: column;
-      }
-      .overlap-nudge {
-        grid-template-columns: repeat(4, 1fr);
-        width: 100%;
-      }
-      .overlap-nudge .btn,
-      #btnResetOverlap {
-        width: 100%;
-      }
-    }
   
-
