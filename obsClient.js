@@ -1,3 +1,14 @@
+// Keep these placeholders in any hosted version of the dashboard.
+// Do not publish an OBS password in this file. A public HTTPS dashboard also cannot
+// safely connect to an unsecured ws:// OBS server without a trusted local bridge.
+const IP_ADDRESS = "IP_ADDRESS";
+const PORT = "4455";
+const PASSWORD = "PASSWORD";
+
+function hasOBSConfig() {
+    return IP_ADDRESS && IP_ADDRESS !== "IP_ADDRESS" && PASSWORD !== "PASSWORD";
+}
+
 class OBSClient {
     constructor() {
         this.obs = null;
@@ -5,6 +16,11 @@ class OBSClient {
     }
 
     async connect() {
+        if (!hasOBSConfig()) {
+            console.info('[OBS] Connection skipped. Set IP_ADDRESS and PASSWORD in obsClient.js to enable OBS sync.');
+            return;
+        }
+
         try {
             this.obs = new OBSWebSocket();
 
@@ -50,3 +66,4 @@ class OBSClient {
 }
 
 window.obsClient = new OBSClient();
+
