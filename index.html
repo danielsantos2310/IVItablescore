@@ -77,7 +77,17 @@
           <div class="v2-full-court" id="v2FullCourt" role="img" aria-label="Live court rotation and server order"><div class="v2-court-team v2-court-left" id="v2CourtLeft"></div><div class="v2-court-net" aria-hidden="true"></div><div class="v2-court-team v2-court-right" id="v2CourtRight"></div></div>
           <div class="v2-court-actions" id="v2CourtActions"></div>
           <div class="v2-court-status" id="v2CourtStatus"><span class="v2-persistent-server" id="v2PersistentServer">Serving: --</span></div>
-          <div class="v2-court-tools" id="v2CourtTools"><button class="btn secondary" id="btnOpenReceive" type="button">Receive Formation</button><span>Drag a bench player onto an on-court player to substitute.</span></div>
+          <div class="v2-court-tools" id="v2CourtTools">
+            <button class="btn secondary" id="btnOpenReceive" type="button">Receive Formation</button>
+            <div class="v2-rotation-correction" aria-label="Rotation correction">
+              <span>Correct rotation</span>
+              <button class="btn secondary" type="button" data-rotation-correction-team="home" data-rotation-direction="back" title="Move Team A back one rotation">Team A back</button>
+              <button class="btn secondary" type="button" data-rotation-correction-team="home" data-rotation-direction="forward" title="Move Team A forward one rotation">Team A forward</button>
+              <button class="btn secondary" type="button" data-rotation-correction-team="away" data-rotation-direction="back" title="Move Team B back one rotation">Team B back</button>
+              <button class="btn secondary" type="button" data-rotation-correction-team="away" data-rotation-direction="forward" title="Move Team B forward one rotation">Team B forward</button>
+            </div>
+            <span>Drag a bench player onto an on-court player to substitute.</span>
+          </div>
         </section>
         <aside class="v2-team-panel v2-away-panel" id="v2RightPanel" aria-labelledby="v2RightTitle">
           <div class="v2-team-panel-head"><h2 id="v2RightTitle">Team B</h2><span id="v2RightSystem">5-1</span></div>

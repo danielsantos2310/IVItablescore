@@ -1358,6 +1358,7 @@ function saveLineupsFromWorkspace() {
     syncPlayerNamesWithRoster(team);
   });
 
+  applyOpeningReceiveRotation(true);
   updateCurrentCourt("home");
   updateCurrentCourt("away");
   resetServerVerification();
@@ -1414,6 +1415,7 @@ function confirmLineupsForNextSet() {
     match.awayBaseRotation = match.awayStartingSix.slice();
     match.awayRotationCount = 0;
   }
+  if (!match.tieBreakServeSelectionPending) applyOpeningReceiveRotation();
   updateCurrentCourt("home");
   updateCurrentCourt("away");
   resetServerVerification();
@@ -1430,6 +1432,50 @@ function rotateBaseOnce(team) {
   arr.push(arr.shift());
   match[rotationCountKey] = ((match[rotationCountKey] || 0) + 1) % 6;
   updateCurrentCourt(team);
+}
+
+function rotateBaseBackwardOnce(team) {
+  const baseKey = team === "home" ? "homeBaseRotation" : "awayBaseRotation";
+  const rotationCountKey = team === "home" ? "homeRotationCount" : "awayRotationCount";
+  const arr = match[baseKey];
+  if (!arr || arr.length !== 6) return;
+  arr.unshift(arr.pop());
+  match[rotationCountKey] = ((match[rotationCountKey] || 0) + 5) % 6;
+  updateCurrentCourt(team);
+}
+
+function applyOpeningReceiveRotation(force = false) {
+  if (!match || match.homeSystem !== "5-1" || match.awaySystem !== "5-1") return;
+  const set = match.sets?.[match.sets.length - 1];
+  if (!set || set.homePoints || set.awayPoints) return;
+  if (!force && match.openingReceiveRotationSetNumber === set.setNumber) return;
+  const receivingTeam = match.serving === "home" ? "away" : "home";
+  const base = match[`${receivingTeam}BaseRotation`] || [];
+  if (base.length !== 6 || !base.every(Boolean)) return;
+  rotateBaseBackwardOnce(receivingTeam);
+  match.openingReceiveRotationSetNumber = set.setNumber;
+  addEvent(
+    "ROTATION_SETUP",
+    `${receivingTeam === "home" ? match.homeTeam : match.awayTeam} starts receiving one rotation back in 5-1.`,
+    receivingTeam
+  );
+}
+
+function correctRotation(team, direction) {
+  if (!match || match.status === "finished") return;
+  const base = match[`${team}BaseRotation`] || [];
+  if (base.length !== 6 || !base.every(Boolean)) return;
+  const forward = direction === "forward";
+  if (forward) rotateBaseOnce(team);
+  else rotateBaseBackwardOnce(team);
+  resetServerVerification();
+  updateCurrentCourt("home");
+  updateCurrentCourt("away");
+  const teamName = team === "home" ? match.homeTeam : match.awayTeam;
+  rotationNoticeText = `${teamName} rotation corrected ${forward ? "forward" : "back"} one position.`;
+  addEvent("ROTATION_CORRECTION", `${teamName} rotation corrected ${forward ? "forward" : "back"} one position.`, team, { direction });
+  saveMatchToStorage();
+  renderAll();
 }
 
 function updateCurrentCourt(team) {
@@ -1953,6 +1999,7 @@ function confirmTieBreakSetup() {
   match.serving = firstServer;
   match.homeOnLeft = homeOnLeft;
   match.tieBreakServeSelectionPending = false;
+  applyOpeningReceiveRotation();
   updateCurrentCourt("home");
   updateCurrentCourt("away");
   resetServerVerification();
@@ -2507,6 +2554,9 @@ function setupV2Layout() {
   moveToV2("btnLineups", "v2CourtTools");
 
   document.getElementById("btnOpenReceive")?.addEventListener("click", openReceiveFormation);
+  document.querySelectorAll("[data-rotation-correction-team]").forEach(button => {
+    button.addEventListener("click", () => correctRotation(button.dataset.rotationCorrectionTeam, button.dataset.rotationDirection));
+  });
   document.getElementById("v2LeftLibero")?.addEventListener("click", () => switchActiveLiberoForSide("left"));
   document.getElementById("v2RightLibero")?.addEventListener("click", () => switchActiveLiberoForSide("right"));
 
@@ -2969,6 +3019,17 @@ function renderV2Workspace() {
   if (serving) serving.innerHTML = `<img src="images/ui/mikasa.png" alt="" /><span>${servingName} serving</span>`;
   const persistentServer = document.getElementById("v2PersistentServer");
   if (persistentServer) persistentServer.textContent = `Serving: ${servingName} · #${servingNumber}`;
+
+  document.querySelectorAll("[data-rotation-correction-team]").forEach(button => {
+    const team = button.dataset.rotationCorrectionTeam;
+    const direction = button.dataset.rotationDirection;
+    const teamName = team === "home" ? match.homeTeam : match.awayTeam;
+    const base = match[`${team}BaseRotation`] || [];
+    const canCorrect = match.status !== "finished" && base.length === 6 && base.every(Boolean);
+    button.textContent = `${teamName} ${direction}`;
+    button.title = `Move ${teamName} ${direction} one rotation`;
+    button.disabled = !canCorrect;
+  });
 }
 
 function getScoreboardPayload() {

@@ -2300,7 +2300,10 @@
     .v2-court-tools { align-items: center; border-top: 1px solid #244766; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; }
     .v2-court-tools .btn { border-radius: 5px; font-size: 11px; padding: 7px 10px; }
     .v2-court-tools .btn[aria-pressed="true"] { border-color: #f4d35e; color: #fff1a3; }
-    .v2-court-tools span { font-size: 10px; margin-left: auto; }
+    .v2-rotation-correction { align-items: center; display: flex; flex-wrap: wrap; gap: 4px; }
+    .v2-rotation-correction > span { color: #a9ceff; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+    .v2-rotation-correction .btn { font-size: 10px; padding: 5px 7px; }
+    .v2-court-tools > span:last-child { font-size: 10px; margin-left: auto; }
 
     .v2-overlay-slot .lineup-workspace:not(.hidden) {
       background: #0f2236;
