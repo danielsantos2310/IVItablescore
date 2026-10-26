@@ -377,6 +377,26 @@ const TEAM_LOGO_ALIASES = {
   "ivi vixen": "vixen"
 };
 
+const TEAM_ROSTER_PROFILES = {
+  ravens: {
+    players: [
+      { name: "Madalina Cocut", number: "9", photo: "images/players/ravens/madalina-cocut.png" },
+      { name: "Jherlyn Perile", number: "1", photo: "images/players/ravens/jherlyn-perile.png" },
+      { name: "Tricia Lin", number: "3", photo: "images/players/ravens/tricia-lin.png" },
+      { name: "Agnieszka Borek", number: "7", photo: "images/players/ravens/agnieszka-borek.png" },
+      { name: "Emmeleia Arakleitou", number: "20", photo: "images/players/ravens/emmeleia-arakleitou.png" },
+      { name: "Carolina Malta", number: "10", photo: "images/players/ravens/carolina-malta.png" },
+      { name: "Thamires Fernandes Ferreira", number: "13", photo: "images/players/ravens/thamires-fernandes-ferreira.png" },
+      { name: "Dimitra Palla", number: "11", libero: true, photo: "images/players/ravens/dimitra-palla.png" },
+      { name: "Tahita Amaral", number: "16", photo: "images/players/ravens/tahita-amaral.png" },
+      { name: "Mariana Delgado", number: "8", photo: "images/players/ravens/mariana-delgado.png" },
+      { name: "Alexandra Ometita", number: "22", photo: "images/players/ravens/alexandra-ometita.png" },
+      { name: "Iara Zacharjasiewicz dos Santos", number: "12", photo: "images/players/ravens/iara-zacharjasiewicz-dos-santos.png" },
+      { name: "Daniele Valenca", number: "25", photo: "images/players/ravens/daniele-valenca.png" }
+    ]
+  }
+};
+
 const VISITOR_TEAM_LOGOS = {
   visitors: "images/Visitor teams/Visitors.png"
 };
@@ -394,6 +414,102 @@ function getTeamLogo(name) {
   if (TEAM_LOGOS[aliasKey]) return TEAM_LOGOS[aliasKey];
   if (VISITOR_TEAM_LOGOS[key]) return VISITOR_TEAM_LOGOS[key];
   return "";
+}
+
+function getTeamRosterProfile(name) {
+  const key = normalizeTeamName(name);
+  return TEAM_ROSTER_PROFILES[TEAM_LOGO_ALIASES[key] || key] || null;
+}
+
+function applyTeamRosterProfile(team) {
+  if (!match) return false;
+  const teamName = team === "home" ? match.homeTeam : match.awayTeam;
+  const profile = getTeamRosterProfile(teamName);
+  const nameSlotsKey = `${team}RosterNameSlots`;
+  const photoSlotsKey = `${team}RosterPhotoSlots`;
+  const rosterKey = `${team}Roster`;
+  if (!profile || match[rosterKey]?.length) return false;
+
+  const regularPlayers = profile.players.filter(player => !player.libero);
+  const liberoPlayers = profile.players.filter(player => player.libero);
+  const slotPlayers = [
+    ...regularPlayers,
+    ...Array(Math.max(0, 12 - regularPlayers.length)).fill(null),
+    ...liberoPlayers.slice(0, 2)
+  ].slice(0, 14);
+  const slots = slotPlayers.map(player => player?.number || null);
+  const activeLibero = liberoPlayers[0]?.number || null;
+
+  match[`${team}RosterSlots`] = slots;
+  match[rosterKey] = slots.filter(Boolean);
+  match[nameSlotsKey] = slotPlayers.map(player => player?.name || "");
+  match[photoSlotsKey] = slotPlayers.map(player => player?.photo || "");
+  match[`${team}PlayerNames`] = Object.fromEntries(
+    slotPlayers.filter(player => player?.number).map(player => [player.number, player.name])
+  );
+  match[`${team}PlayerPhotos`] = Object.fromEntries(
+    slotPlayers.filter(player => player?.number && player.photo).map(player => [player.number, player.photo])
+  );
+  match[`${team}Liberos`] = liberoPlayers.map(player => player.number).filter(Boolean);
+  match[`${team}Libero`] = activeLibero;
+  match[`${team}StartingLibero`] = activeLibero;
+  return true;
+}
+
+function addMissingTeamProfilePlayers(team) {
+  if (!match) return false;
+  const teamName = team === "home" ? match.homeTeam : match.awayTeam;
+  const profile = getTeamRosterProfile(teamName);
+  const rosterKey = `${team}Roster`;
+  if (!profile || !match[rosterKey]?.length) return false;
+
+  const slots = getStoredRosterSlots(team);
+  const nameSlots = getStoredRosterNameSlots(team, slots);
+  const photoSlots = Array.isArray(match[`${team}RosterPhotoSlots`])
+    ? match[`${team}RosterPhotoSlots`].slice(0, 14)
+    : Array(14).fill("");
+  while (photoSlots.length < 14) photoSlots.push("");
+  let changed = false;
+
+  profile.players.filter(player => !player.libero).forEach(player => {
+    const isPresent = slots.includes(player.number) || nameSlots.some(name => normalizeTeamName(name) === normalizeTeamName(player.name));
+    if (isPresent) return;
+    const emptySlot = slots.slice(0, 12).findIndex(number => !number);
+    if (emptySlot < 0) return;
+    slots[emptySlot] = player.number;
+    nameSlots[emptySlot] = player.name;
+    photoSlots[emptySlot] = player.photo;
+    changed = true;
+  });
+
+  if (!changed) return false;
+  match[`${team}RosterSlots`] = slots;
+  match[`${team}RosterNameSlots`] = nameSlots;
+  match[`${team}RosterPhotoSlots`] = photoSlots;
+  match[rosterKey] = slots.filter(Boolean);
+  match[`${team}PlayerNames`] = Object.fromEntries(
+    slots.map((number, index) => [number, nameSlots[index]]).filter(([number, name]) => number && name)
+  );
+  match[`${team}PlayerPhotos`] = Object.fromEntries(
+    slots.map((number, index) => [number, photoSlots[index]]).filter(([number, photo]) => number && photo)
+  );
+  return true;
+}
+
+function getPlayerPhoto(team, number) {
+  if (!match || !number) return "";
+  const photos = match[`${team}PlayerPhotos`] || {};
+  if (photos[number]) return photos[number];
+  const slots = match[`${team}RosterSlots`] || [];
+  const slotIndex = slots.indexOf(String(number));
+  const slotPhoto = slotIndex >= 0 ? match[`${team}RosterPhotoSlots`]?.[slotIndex] : "";
+  if (slotPhoto) return slotPhoto;
+  const teamName = team === "home" ? match.homeTeam : match.awayTeam;
+  const profile = getTeamRosterProfile(teamName);
+  const playerName = match[`${team}PlayerNames`]?.[number]
+    || (slotIndex >= 0 ? match[`${team}RosterNameSlots`]?.[slotIndex] : "");
+  const namedPlayer = profile?.players.find(player => normalizeTeamName(player.name) === normalizeTeamName(playerName));
+  return namedPlayer?.photo || profile?.players.find(player => player.number === String(number))?.photo || "";
 }
 
 function applyLogo(imgEl, teamName) {
@@ -460,6 +576,10 @@ function createNewMatch() {
     awayRoster: [],
     homeRosterSlots: Array(14).fill(null),
     awayRosterSlots: Array(14).fill(null),
+    homeRosterNameSlots: Array(14).fill(""),
+    awayRosterNameSlots: Array(14).fill(""),
+    homeRosterPhotoSlots: Array(14).fill(""),
+    awayRosterPhotoSlots: Array(14).fill(""),
     homeLiberos: [],
     awayLiberos: [],
     homeBaseRotation: [null, null, null, null, null, null],
@@ -487,6 +607,8 @@ function createNewMatch() {
     awaySubstitutionPairs: [],
     homePlayerNames: {},
     awayPlayerNames: {},
+    homePlayerPhotos: {},
+    awayPlayerPhotos: {},
     serverVerification: { home: null, away: null },
 
     // Timers
@@ -501,6 +623,8 @@ function createNewMatch() {
   };
 
   match.matchStartTime = new Date().toISOString();
+  applyTeamRosterProfile("home");
+  applyTeamRosterProfile("away");
   saveMatchToStorage();
   renderAll();
   addEvent("SYSTEM", `New match started: ${homeName} vs ${awayName}`);
@@ -702,6 +826,15 @@ function getStoredRosterSlots(team) {
   return [...regular, ...Array(Math.max(0, 12 - regular.length)).fill(null), liberos[0] || null, liberos[1] || null];
 }
 
+function getStoredRosterNameSlots(team, slots) {
+  const nameSlots = Array.isArray(match[`${team}RosterNameSlots`])
+    ? match[`${team}RosterNameSlots`].slice(0, 14)
+    : [];
+  const names = match[`${team}PlayerNames`] || {};
+  while (nameSlots.length < 14) nameSlots.push("");
+  return nameSlots.map((name, index) => name || (slots[index] ? names[slots[index]] || "" : ""));
+}
+
 function createNumberInput(id, label, value, className, data = {}) {
   const field = document.createElement("div");
   field.className = className;
@@ -819,13 +952,14 @@ function renderLineupEditor(team) {
   const title = document.getElementById(`${team}LineupEditorTitle`);
   const isHome = team === "home";
   const slots = getStoredRosterSlots(team);
+  const nameSlots = getStoredRosterNameSlots(team, slots);
   const starting = (isHome ? match.homeStartingSix : match.awayStartingSix) || [];
   const values = starting.some(Boolean) ? starting : slots.slice(0, 6);
 
   title.textContent = isHome ? match.homeTeam : match.awayTeam;
   rosterContainer.innerHTML = "";
   slots.forEach((value, index) => {
-    rosterContainer.appendChild(createLineupRosterRow(team, index, value));
+    rosterContainer.appendChild(createLineupRosterRow(team, index, value, nameSlots[index]));
   });
   renderLiberoAssignment(team);
 
@@ -848,9 +982,8 @@ function renderLineupEditor(team) {
   validateLineupTeam(team);
 }
 
-function createLineupRosterRow(team, index, value) {
+function createLineupRosterRow(team, index, value, slotName = "") {
   const isLibero = index >= 12;
-  const names = match[team === "home" ? "homePlayerNames" : "awayPlayerNames"] || {};
   const row = document.createElement("div");
   row.className = `lineup-roster-row${isLibero ? " libero" : ""}`;
   row.draggable = Boolean(value) && !isLibero;
@@ -870,7 +1003,7 @@ function createLineupRosterRow(team, index, value) {
   numberInput.dataset.rosterSlot = String(index);
   const nameInput = document.createElement("input");
   nameInput.className = "lineup-roster-name";
-  nameInput.value = value ? (names[value] || "") : "";
+  nameInput.value = slotName;
   nameInput.placeholder = "Player name";
   nameInput.autocomplete = "off";
 
@@ -889,8 +1022,13 @@ function createLineupRosterRow(team, index, value) {
     clearStatus();
   });
   nameInput.addEventListener("input", () => {
+    match[`${team}RosterNameSlots`] = getStoredRosterNameSlots(team, getStoredRosterSlots(team));
+    match[`${team}RosterNameSlots`][index] = nameInput.value.trim();
     const number = numberInput.value.trim();
-    if (!number) return;
+    if (!number) {
+      clearStatus();
+      return;
+    }
     const namesKey = team === "home" ? "homePlayerNames" : "awayPlayerNames";
     match[namesKey] = match[namesKey] || {};
     const name = nameInput.value.trim();
@@ -1040,6 +1178,7 @@ function saveCurrentSetRoles() {
 
 function collectLineupTeam(team) {
   const rosterInputs = Array.from(document.querySelectorAll(`#${team}RosterInputs input[data-roster-slot]`));
+  const nameInputs = Array.from(document.querySelectorAll(`#${team}RosterInputs input.lineup-roster-name`));
   const startingInputs = Array.from(document.querySelectorAll(`#${team}StartingInputs input`));
   const slots = rosterInputs.map(input => input.value.trim() || null);
   const starting = Array(6).fill(null);
@@ -1048,6 +1187,7 @@ function collectLineupTeam(team) {
   });
   return {
     slots,
+    nameSlots: nameInputs.map(input => input.value.trim()),
     regular: slots.slice(0, 12).filter(Boolean),
     liberos: slots.slice(12, 14).filter(Boolean),
     starting,
@@ -1116,7 +1256,7 @@ function openLineupWorkspace(view = "lineups") {
   if (workspaceDescription) {
     workspaceDescription.textContent = view === "receive"
       ? "Current receiving-team formation. It updates automatically as the match rotates."
-      : "Enter jersey numbers only. Slots L1 and L2 are reserved for liberos.";
+      : "Enter jersey numbers. Registered team names load automatically; slots L1 and L2 are reserved for liberos.";
   }
   renderLineupEditor("home");
   renderLineupEditor("away");
@@ -1159,6 +1299,7 @@ function saveLineupsFromWorkspace() {
 
   [["home", homeResult.data], ["away", awayResult.data]].forEach(([team, data]) => {
     match[`${team}RosterSlots`] = data.slots;
+    match[`${team}RosterNameSlots`] = data.nameSlots;
     match[`${team}Roster`] = [...data.regular, ...data.liberos];
     match[`${team}Liberos`] = data.liberos;
     match[`${team}Libero`] = data.activeLibero || null;
@@ -1171,6 +1312,15 @@ function saveLineupsFromWorkspace() {
     match[`${team}BaseRotation`] = data.starting.slice();
     match[`${team}StartingSix`] = data.starting.slice();
     match[`${team}RotationCount`] = 0;
+    const photoSlots = Array.isArray(match[`${team}RosterPhotoSlots`])
+      ? match[`${team}RosterPhotoSlots`]
+      : Array(14).fill("");
+    match[`${team}PlayerNames`] = Object.fromEntries(
+      data.slots.map((number, index) => [number, data.nameSlots[index]]).filter(([number, name]) => number && name)
+    );
+    match[`${team}PlayerPhotos`] = Object.fromEntries(
+      data.slots.map((number, index) => [number, photoSlots[index]]).filter(([number, photo]) => number && photo)
+    );
     syncPlayerNamesWithRoster(team);
   });
 
@@ -1193,7 +1343,10 @@ function clearLoadedSampleLineups() {
   ["home", "away"].forEach((team) => {
     match[`${team}Roster`] = [];
     match[`${team}RosterSlots`] = Array(14).fill(null);
+    match[`${team}RosterNameSlots`] = Array(14).fill("");
+    match[`${team}RosterPhotoSlots`] = Array(14).fill("");
     match[`${team}PlayerNames`] = {};
+    match[`${team}PlayerPhotos`] = {};
     match[`${team}Liberos`] = [];
     match[`${team}Libero`] = null;
     match[`${team}StartingLibero`] = null;
@@ -2721,9 +2874,10 @@ function renderV2Court(team, target, side) {
     const number = data.court?.[index] || "-";
     const isLibero = data.libero && data.liberoPos === index;
     const isServer = match.serving === team && index === 0;
+    const photo = getPlayerPhoto(team, number);
     const marker = document.createElement("div");
     marker.className = `v2-court-marker${isLibero ? " is-libero" : ""}${isServer ? " is-serving" : ""}`;
-    marker.innerHTML = `<span>P${index + 1}</span><strong>${number}</strong>${isServer ? "<em>Server</em>" : ""}`;
+    marker.innerHTML = `<span>P${index + 1}</span><strong class="${photo ? "has-player-photo" : ""}">${photo ? `<img src="${photo}" alt=""><b>${number}</b>` : number}</strong>${isServer ? "<em>Server</em>" : ""}`;
     target.appendChild(marker);
   });
   return false;
@@ -3407,6 +3561,8 @@ document.getElementById("homeNameInput").addEventListener("change", (e) => {
   refreshFirstServeLabels();
   if (!match) return;
   match.homeTeam = e.target.value || "Team A";
+  applyTeamRosterProfile("home");
+  addMissingTeamProfilePlayers("home");
   saveMatchToStorage();
   renderAll();
   syncNamesToOBS();
@@ -3415,6 +3571,8 @@ document.getElementById("awayNameInput").addEventListener("change", (e) => {
   refreshFirstServeLabels();
   if (!match) return;
   match.awayTeam = e.target.value || "Team B";
+  applyTeamRosterProfile("away");
+  addMissingTeamProfilePlayers("away");
   saveMatchToStorage();
   renderAll();
   syncNamesToOBS();
@@ -3468,6 +3626,16 @@ window.addEventListener("message", (e) => {
     if (!Array.isArray(match.awayRosterSlots) || match.awayRosterSlots.length !== 14) {
       match.awayRosterSlots = getStoredRosterSlots("away");
     }
+    if (!Array.isArray(match.homeRosterNameSlots) || match.homeRosterNameSlots.length !== 14) {
+      match.homeRosterNameSlots = getStoredRosterNameSlots("home", match.homeRosterSlots);
+    }
+    if (!Array.isArray(match.awayRosterNameSlots) || match.awayRosterNameSlots.length !== 14) {
+      match.awayRosterNameSlots = getStoredRosterNameSlots("away", match.awayRosterSlots);
+    }
+    if (!Array.isArray(match.homeRosterPhotoSlots) || match.homeRosterPhotoSlots.length !== 14) match.homeRosterPhotoSlots = Array(14).fill("");
+    if (!Array.isArray(match.awayRosterPhotoSlots) || match.awayRosterPhotoSlots.length !== 14) match.awayRosterPhotoSlots = Array(14).fill("");
+    if (!match.homePlayerPhotos || typeof match.homePlayerPhotos !== "object") match.homePlayerPhotos = {};
+    if (!match.awayPlayerPhotos || typeof match.awayPlayerPhotos !== "object") match.awayPlayerPhotos = {};
     // Backfill starting six snapshots if missing
     if (!match.homeStartingSix || match.homeStartingSix.length !== 6) {
       match.homeStartingSix = (match.homeBaseRotation || []).slice();
@@ -3483,7 +3651,13 @@ window.addEventListener("message", (e) => {
       const index = match.awayBaseRotation?.indexOf(match.awayStartingSix?.[0]);
       match.awayRotationCount = index >= 0 ? (6 - index) % 6 : 0;
     }
-    if (clearLoadedSampleLineups()) saveMatchToStorage();
+    const sampleCleared = clearLoadedSampleLineups();
+    const homeProfileApplied = applyTeamRosterProfile("home");
+    const awayProfileApplied = applyTeamRosterProfile("away");
+    const profileApplied = homeProfileApplied || awayProfileApplied;
+    const homeProfileMerged = addMissingTeamProfilePlayers("home");
+    const awayProfileMerged = addMissingTeamProfilePlayers("away");
+    if (sampleCleared || profileApplied || homeProfileMerged || awayProfileMerged) saveMatchToStorage();
     document.getElementById("homeNameInput").value = match.homeTeam;
     document.getElementById("awayNameInput").value = match.awayTeam;
     document.getElementById("matchIdInput").value = match.id;

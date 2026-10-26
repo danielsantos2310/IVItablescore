@@ -6,6 +6,7 @@ Browser-based volleyball scoring console for IVI's 2026/27 season. It runs the m
 
 - Best-of-five scoring, fifth-set tiebreak, timeouts, sanctions, undo, and manual end-set checks.
 - Team lineups, libero replacement rules, rotations, service-order checks, 5-1 receive plans, and 6-0 mode.
+- Ravens has a built-in player profile: selecting the team preloads editable player names, and portraits appear on the live court after jersey numbers are assigned and the lineup is saved.
 - Per-set substitution limit of eight, with paired substitution enforcement.
 - Audio panel, auxiliary scoreboard, optional OBS WebSocket output, and print/export views.
 - QR-sharing to a read-only referee page backed by Supabase.
