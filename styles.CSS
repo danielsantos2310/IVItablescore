@@ -2256,6 +2256,9 @@
     .v2-court-marker { align-items: center; display: flex; flex-direction: column; justify-content: center; min-width: 0; position: relative; }
     .v2-court-marker > span { color: #a9ceff; font-size: 11px; font-weight: 800; margin-bottom: 4px; }
     .v2-court-marker > strong { align-items: center; background: #071525; border: 3px solid var(--accent); border-radius: 50%; color: #ffffff; display: inline-flex; font-size: clamp(20px, 2.5vw, 30px); height: clamp(48px, 5.8vw, 66px); justify-content: center; width: clamp(48px, 5.8vw, 66px); }
+    .v2-court-marker > strong.has-player-photo { overflow: hidden; position: relative; }
+    .v2-court-marker > strong.has-player-photo img { height: 100%; inset: 0; object-fit: cover; position: absolute; width: 100%; }
+    .v2-court-marker > strong.has-player-photo b { background: rgba(7,21,37,.9); border: 1px solid rgba(255,255,255,.78); border-radius: 50%; bottom: 1px; font-size: .62em; line-height: 1; min-width: 1.25em; padding: 3px 4px; position: absolute; right: 1px; text-align: center; z-index: 1; }
     .v2-court-right .v2-court-marker > strong { border-color: var(--accent2); }
     .v2-court-marker.is-libero > strong { border-color: #ffffff; }
     .v2-court-marker.is-serving > strong { box-shadow: 0 0 0 5px rgba(0,200,106,.22); }

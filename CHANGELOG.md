@@ -14,6 +14,9 @@
 - Added confirmed set and match completion workflow: normal sets end at 25 and tiebreaks at 15, both requiring a two-point lead. Extended scores are supported, Set 5 requires first-server and starting-side choices, and sides now switch automatically once at 8 points.
 - Removed the temporary sample roster loader and cleared the seeded sample player data so official lineups begin empty.
 - Reduced the timeout introduction delay from four seconds to two seconds before the 30-second clock starts.
+- Added the Ravens player profile from the 2026/27 licence sheet, with editable preloaded names, blank jersey-number fields, and court portraits linked after a lineup is saved.
+- Populated the Ravens profile with the supplied jersey numbers, including Emmeleia Arakleitou (#20), and set Dimitra Palla (#11) as the active L1 libero.
+- Added Daniele Valenca (#25) and her live-court portrait to the Ravens roster profile.
 - V2.4: Split the shared lineup overlay into focused Lineups and Receive Formation views; mirrored the away score-banner order so its score and set tally sit beside the centre panel and team identity remains at the outer edge.
 - V2.3: Made libero replacement follow a substituted eligible player, added free two-libero switching, and added current-set 5-1 role overrides for inversions that reset at the next set.
 - V2.2: Added a persistent team-and-player serving indicator, aligned right-side set totals with the score, added player names to lineup rows, and added lineup drag-and-drop for starting positions and 5-1 court roles.
