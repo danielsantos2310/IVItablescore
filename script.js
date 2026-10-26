@@ -3026,7 +3026,7 @@ function renderV2Workspace() {
     const teamName = team === "home" ? match.homeTeam : match.awayTeam;
     const base = match[`${team}BaseRotation`] || [];
     const canCorrect = match.status !== "finished" && base.length === 6 && base.every(Boolean);
-    button.textContent = `${teamName} ${direction}`;
+    button.textContent = direction === "forward" ? "Forward 1" : "Back 1";
     button.title = `Move ${teamName} ${direction} one rotation`;
     button.disabled = !canCorrect;
   });

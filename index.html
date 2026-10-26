@@ -79,13 +79,6 @@
           <div class="v2-court-status" id="v2CourtStatus"><span class="v2-persistent-server" id="v2PersistentServer">Serving: --</span></div>
           <div class="v2-court-tools" id="v2CourtTools">
             <button class="btn secondary" id="btnOpenReceive" type="button">Receive Formation</button>
-            <div class="v2-rotation-correction" aria-label="Rotation correction">
-              <span>Correct rotation</span>
-              <button class="btn secondary" type="button" data-rotation-correction-team="home" data-rotation-direction="back" title="Move Team A back one rotation">Team A back</button>
-              <button class="btn secondary" type="button" data-rotation-correction-team="home" data-rotation-direction="forward" title="Move Team A forward one rotation">Team A forward</button>
-              <button class="btn secondary" type="button" data-rotation-correction-team="away" data-rotation-direction="back" title="Move Team B back one rotation">Team B back</button>
-              <button class="btn secondary" type="button" data-rotation-correction-team="away" data-rotation-direction="forward" title="Move Team B forward one rotation">Team B forward</button>
-            </div>
             <span>Drag a bench player onto an on-court player to substitute.</span>
           </div>
         </section>
@@ -215,6 +208,11 @@
               <div class="lineup-field-label">Squad numbers</div>
               <div class="roster-number-grid" id="homeRosterInputs"></div>
               <div class="libero-assignment" id="homeLiberoAssignment"></div>
+              <div class="lineup-rotation-correction" aria-label="Team A rotation correction">
+                <span>Rotation correction</span>
+                <button class="btn secondary" type="button" data-rotation-correction-team="home" data-rotation-direction="back" title="Move Team A back one rotation">Back 1</button>
+                <button class="btn secondary" type="button" data-rotation-correction-team="home" data-rotation-direction="forward" title="Move Team A forward one rotation">Forward 1</button>
+              </div>
               <div class="lineup-field-label">Starting positions</div>
               <div class="starting-position-grid" id="homeStartingInputs"></div>
               <div class="five-one-role-map" id="homeRoleMap"></div>
@@ -230,6 +228,11 @@
               <div class="lineup-field-label">Squad numbers</div>
               <div class="roster-number-grid" id="awayRosterInputs"></div>
               <div class="libero-assignment" id="awayLiberoAssignment"></div>
+              <div class="lineup-rotation-correction" aria-label="Team B rotation correction">
+                <span>Rotation correction</span>
+                <button class="btn secondary" type="button" data-rotation-correction-team="away" data-rotation-direction="back" title="Move Team B back one rotation">Back 1</button>
+                <button class="btn secondary" type="button" data-rotation-correction-team="away" data-rotation-direction="forward" title="Move Team B forward one rotation">Forward 1</button>
+              </div>
               <div class="lineup-field-label">Starting positions</div>
               <div class="starting-position-grid" id="awayStartingInputs"></div>
               <div class="five-one-role-map" id="awayRoleMap"></div>
