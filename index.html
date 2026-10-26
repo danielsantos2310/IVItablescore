@@ -198,6 +198,10 @@
           <div class="lineup-editors">
             <article class="lineup-team-editor">
               <h3 id="homeLineupEditorTitle">Team A</h3>
+              <div class="lineup-system-toggle" role="group" aria-label="Team A playing system">
+                <button class="btn secondary" type="button" data-lineup-system="home" data-system="5-1" aria-pressed="true">5-1</button>
+                <button class="btn secondary" type="button" data-lineup-system="home" data-system="6-0" aria-pressed="false">6-0</button>
+              </div>
               <div class="lineup-field-label">Squad numbers</div>
               <div class="roster-number-grid" id="homeRosterInputs"></div>
               <div class="libero-assignment" id="homeLiberoAssignment"></div>
@@ -209,6 +213,10 @@
 
             <article class="lineup-team-editor">
               <h3 id="awayLineupEditorTitle">Team B</h3>
+              <div class="lineup-system-toggle" role="group" aria-label="Team B playing system">
+                <button class="btn secondary" type="button" data-lineup-system="away" data-system="5-1" aria-pressed="true">5-1</button>
+                <button class="btn secondary" type="button" data-lineup-system="away" data-system="6-0" aria-pressed="false">6-0</button>
+              </div>
               <div class="lineup-field-label">Squad numbers</div>
               <div class="roster-number-grid" id="awayRosterInputs"></div>
               <div class="libero-assignment" id="awayLiberoAssignment"></div>
@@ -238,10 +246,6 @@
                 <div class="rotation-team-head">
                   <div class="rotation-team-heading">
                     <h3 id="homeRotationTitle">Team A</h3>
-                    <select class="rotation-system" id="homeSystemSelect" aria-label="Team A playing system">
-                      <option value="5-1">5-1</option>
-                      <option value="6-0">6-0</option>
-                    </select>
                   </div>
                   <span class="serve-state" id="homeServeState">Receiving</span>
                 </div>
@@ -266,10 +270,6 @@
                 <div class="rotation-team-head">
                   <div class="rotation-team-heading">
                     <h3 id="awayRotationTitle">Team B</h3>
-                    <select class="rotation-system" id="awaySystemSelect" aria-label="Team B playing system">
-                      <option value="5-1">5-1</option>
-                      <option value="6-0">6-0</option>
-                    </select>
                   </div>
                   <span class="serve-state" id="awayServeState">Receiving</span>
                 </div>

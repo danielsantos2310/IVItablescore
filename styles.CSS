@@ -1007,6 +1007,25 @@
       text-transform: uppercase;
     }
 
+    .lineup-system-toggle {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px;
+      margin: -3px 0 8px;
+    }
+
+    .lineup-system-toggle .btn {
+      font-size: 10px;
+      min-height: 28px;
+      padding: 4px 6px;
+    }
+
+    .lineup-system-toggle .btn.active {
+      background: #1d4d75;
+      border-color: #66b7ef;
+      color: #fff;
+    }
+
     .lineup-field-label {
       color: var(--muted);
       font-size: 9px;

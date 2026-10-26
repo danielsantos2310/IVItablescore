@@ -790,12 +790,12 @@ function legacySetLineups() {
 }
 
 const STARTING_POSITION_LAYOUT = [
-  { label: "P4", index: 3 },
-  { label: "P3", index: 2 },
-  { label: "P2", index: 1 },
-  { label: "P5", index: 4 },
-  { label: "P6", index: 5 },
-  { label: "P1", index: 0 }
+  { label: "P4", role: "Opp", index: 3 },
+  { label: "P3", role: "OH1", index: 2 },
+  { label: "P2", role: "MB1", index: 1 },
+  { label: "P5", role: "MB2", index: 4 },
+  { label: "P6", role: "OH2", index: 5 },
+  { label: "P1", role: "Setter", index: 0 }
 ];
 
 const FIVE_ONE_ROLE_FIELDS = [
@@ -806,6 +806,38 @@ const FIVE_ONE_ROLE_FIELDS = [
   { key: "hitterOne", label: "H1" },
   { key: "hitterTwo", label: "H2" }
 ];
+
+const FIVE_ONE_STARTING_ROLE_INDEX = {
+  setter: 0,
+  middleOne: 1,
+  hitterOne: 2,
+  opposite: 3,
+  middleTwo: 4,
+  hitterTwo: 5
+};
+
+function getFiveOneStartingRoleMap(starting) {
+  return Object.fromEntries(
+    Object.entries(FIVE_ONE_STARTING_ROLE_INDEX).map(([role, index]) => [role, starting[index] || null])
+  );
+}
+
+function getLineupStartingInputValues(team) {
+  const values = Array(6).fill(null);
+  document.querySelectorAll(`#${team}StartingInputs input[data-rotation-index]`).forEach(input => {
+    values[Number(input.dataset.rotationIndex)] = input.value.trim() || null;
+  });
+  return values;
+}
+
+function renderLineupSystemToggle(team) {
+  const system = match?.[team === "home" ? "homeSystem" : "awaySystem"] === "6-0" ? "6-0" : "5-1";
+  document.querySelectorAll(`[data-lineup-system="${team}"]`).forEach(button => {
+    const selected = button.dataset.system === system;
+    button.classList.toggle("active", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  });
+}
 
 function sanitizeJerseyInput(input) {
   input.value = input.value.replace(/\D/g, "").slice(0, 2);
@@ -853,11 +885,7 @@ function createNumberInput(id, label, value, className, data = {}) {
     sanitizeJerseyInput(input);
     if (Number(input.dataset.rosterSlot) >= 12) updateLiberoSelectOptions(input.dataset.team);
     if (input.dataset.rotationIndex !== undefined) {
-      const currentStarting = Array(6).fill(null);
-      document.querySelectorAll(`#${input.dataset.team}StartingInputs input`).forEach(startingInput => {
-        currentStarting[Number(startingInput.dataset.rotationIndex)] = startingInput.value.trim() || null;
-      });
-      renderFiveOneRoleMap(input.dataset.team, currentStarting);
+      renderFiveOneRoleMap(input.dataset.team, getLineupStartingInputValues(input.dataset.team));
     }
     validateLineupTeam(input.dataset.team);
     const status = document.getElementById("lineupSaveStatus");
@@ -955,8 +983,10 @@ function renderLineupEditor(team) {
   const nameSlots = getStoredRosterNameSlots(team, slots);
   const starting = (isHome ? match.homeStartingSix : match.awayStartingSix) || [];
   const values = starting.some(Boolean) ? starting : slots.slice(0, 6);
+  const system = match[team === "home" ? "homeSystem" : "awaySystem"] === "6-0" ? "6-0" : "5-1";
 
   title.textContent = isHome ? match.homeTeam : match.awayTeam;
+  renderLineupSystemToggle(team);
   rosterContainer.innerHTML = "";
   slots.forEach((value, index) => {
     rosterContainer.appendChild(createLineupRosterRow(team, index, value, nameSlots[index]));
@@ -967,7 +997,7 @@ function renderLineupEditor(team) {
   STARTING_POSITION_LAYOUT.forEach(position => {
     const field = createNumberInput(
       `${team}Start${position.label}`,
-      position.label,
+      system === "5-1" ? `${position.label} - ${position.role}` : position.label,
       values[position.index],
       "starting-position-field",
       { team, rotationIndex: String(position.index) }
@@ -1050,10 +1080,7 @@ function createLineupRosterRow(team, index, value, slotName = "") {
 }
 
 function refreshLineupStartingState(team) {
-  const currentStarting = Array(6).fill(null);
-  document.querySelectorAll(`#${team}StartingInputs input[data-rotation-index]`).forEach(startingInput => {
-    currentStarting[Number(startingInput.dataset.rotationIndex)] = startingInput.value.trim() || null;
-  });
+  const currentStarting = getLineupStartingInputValues(team);
   renderFiveOneRoleMap(team, currentStarting);
   validateLineupTeam(team);
   const status = document.getElementById("lineupSaveStatus");
@@ -1088,12 +1115,17 @@ function renderFiveOneRoleMap(team, starting) {
   if (system === "6-0") return;
 
   const existingSelections = Object.fromEntries(FIVE_ONE_ROLE_FIELDS
-    .map(({ key }) => [key, document.getElementById(`${team}Role${key}`)?.value])
-    .filter(([, value]) => value !== undefined));
+    .map(({ key }) => {
+      const input = document.getElementById(`${team}Role${key}`);
+      return [key, input?.dataset.manual === "true" ? input.value : null];
+    })
+    .filter(([, value]) => Boolean(value)));
   const activeRoleMap = Object.fromEntries(
-    Object.entries(getEffectiveRoleMap(team)).map(([key, number]) => [key, getActiveRoleNumber(team, number)])
+    Object.entries(match?.[`${team}RoleMapOverride`] || {})
+      .filter(([, number]) => Boolean(number))
+      .map(([key, number]) => [key, getActiveRoleNumber(team, number)])
   );
-  const roleMap = { ...activeRoleMap, ...existingSelections };
+  const roleMap = { ...getFiveOneStartingRoleMap(starting), ...activeRoleMap, ...existingSelections };
   const baseRotation = match[team === "home" ? "homeBaseRotation" : "awayBaseRotation"] || [];
   const eligiblePlayers = [...new Set([...starting, ...baseRotation].filter(Boolean))];
   container.innerHTML = "";
@@ -1112,6 +1144,7 @@ function renderFiveOneRoleMap(team, starting) {
     input.type = "hidden";
     input.id = `${team}Role${key}`;
     input.value = eligiblePlayers.includes(roleMap[key]) ? roleMap[key] : "";
+    if (existingSelections[key]) input.dataset.manual = "true";
     const target = document.createElement("div");
     target.className = "five-one-role-target";
     target.tabIndex = 0;
@@ -1120,6 +1153,7 @@ function renderFiveOneRoleMap(team, starting) {
     enableLineupDropTarget(target, team, number => {
       if (!eligiblePlayers.includes(number)) return;
       input.value = number;
+      input.dataset.manual = "true";
       target.textContent = `#${number}`;
       validateLineupTeam(team);
     });
@@ -2277,7 +2311,9 @@ function renderRotation() {
     panel.classList.toggle("is-serving", isServing);
     state.textContent = isServing ? "Serving" : "Receiving";
     document.getElementById(`${team}RotationTitle`).textContent = isHome ? match.homeTeam : match.awayTeam;
-    systemSelect.value = (isHome ? match.homeSystem : match.awaySystem) === "6-0" ? "6-0" : "5-1";
+    if (systemSelect) {
+      systemSelect.value = (isHome ? match.homeSystem : match.awaySystem) === "6-0" ? "6-0" : "5-1";
+    }
     document.getElementById(`${team}CurrentServer`).textContent =
       isServing && hasLineup ? `#${order[0]}` : "--";
     const next = hasLineup ? order.slice(1, 3).map(n => `#${n}`).join(", ") : "--";
@@ -2355,6 +2391,12 @@ function getActiveRoleNumber(team, roleNumber) {
 function setTeamSystem(team, system) {
   if (!match) return;
   match[team === "home" ? "homeSystem" : "awaySystem"] = system === "6-0" ? "6-0" : "5-1";
+  const currentStarting = getLineupStartingInputValues(team);
+  renderLineupSystemToggle(team);
+  renderFiveOneRoleMap(team, currentStarting.some(Boolean)
+    ? currentStarting
+    : (team === "home" ? match.homeStartingSix : match.awayStartingSix) || []);
+  validateLineupTeam(team);
   saveMatchToStorage();
   renderRotation();
 }
@@ -3460,8 +3502,9 @@ if (lineupsBtn) lineupsBtn.addEventListener("click", () => setLineups());
 document.getElementById("btnCloseLineups")?.addEventListener("click", closeLineupWorkspace);
 document.getElementById("btnSaveLineups")?.addEventListener("click", saveLineupsFromWorkspace);
 document.getElementById("btnSaveCurrentRoles")?.addEventListener("click", saveCurrentSetRoles);
-document.getElementById("homeSystemSelect")?.addEventListener("change", event => setTeamSystem("home", event.target.value));
-document.getElementById("awaySystemSelect")?.addEventListener("change", event => setTeamSystem("away", event.target.value));
+document.querySelectorAll("[data-lineup-system]").forEach(button => {
+  button.addEventListener("click", () => setTeamSystem(button.dataset.lineupSystem, button.dataset.system));
+});
 document.getElementById("btnToggleTimeline")?.addEventListener("click", toggleTimeline);
 
 document.querySelectorAll("[data-verify-server]").forEach(button => {
