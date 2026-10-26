@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <title>IVI – Official Volleyball Score</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="images/club-logo.png">
+  <link rel="stylesheet" href="styles.CSS">
+</head>
+
+<body>
+  <div class="app">
+    <header class="no-print v2-setup-bar">
+      <div class="brand-header">
+        <img class="club-logo" src="images/club-logo.png" alt="IVI club logo" />
+        <div class="season-title">IVI 26/27 Season</div>
+      </div>
+      <div class="match-setup">
+        <div>
+          <label for="homeNameInput">Team A</label>
+          <input type="text" id="homeNameInput" value="" list="teamNameList" placeholder="Type or choose a team" autocomplete="off" />
+        </div>
+        <div>
+          <label for="awayNameInput">Team B</label>
+          <input type="text" id="awayNameInput" value="" list="teamNameList" placeholder="Type or choose a team" autocomplete="off" />
+        </div>
+        <div>
+          <label for="matchIdInput">Match ID</label>
+          <input type="text" id="matchIdInput" value="IVI-TEST-001" />
+        </div>
+        <div class="serve-choice">
+          <label>First Serve</label>
+          <div class="serve-options">
+            <label><input type="radio" name="firstServe" value="home" checked /> <span id="firstServeHomeLabel">Team
+                A</span></label>
+            <label><input type="radio" name="firstServe" value="away" /> <span id="firstServeAwayLabel">Team
+                B</span></label>
+          </div>
+        </div>
+        <button class="btn secondary" id="btnOpenAudioPanel">Audio Panel</button>
+        <button class="btn secondary" id="btnShareReferee" type="button">Second Referee QR</button>
+        <button class="btn secondary" id="btnNewMatch">New / Reset Match</button>
+        <!-- Load Saved Match removed -->
+        <button class="btn secondary" id="btnLineups" type="button" aria-expanded="false" aria-controls="lineupWorkspace">Set Lineups &amp; Libero</button>
+      </div>
+      <datalist id="teamNameList">
+        <option value="DINOSAURS"></option>
+        <option value="DRAGONS"></option>
+        <option value="LYNX"></option>
+        <option value="PHOENIX"></option>
+        <option value="RAVENS"></option>
+        <option value="VIXEN"></option>
+        <option value="Visitors"></option>
+      </datalist>
+    </header>
+
+    <main class="v2-console hidden" id="v2Console">
+      <section class="v2-score-banner" aria-label="Live match score">
+        <div class="v2-banner-team v2-banner-left" id="v2BannerLeft"></div>
+        <div class="v2-set-box" id="v2SetBox"></div>
+        <div class="v2-match-clock" id="v2ClockBox"></div>
+        <div class="v2-banner-team v2-banner-right" id="v2BannerRight"></div>
+        <div class="v2-serving-state" id="v2ServingState"></div>
+      </section>
+      <section class="v2-workspace">
+        <aside class="v2-team-panel v2-home-panel" id="v2LeftPanel" aria-labelledby="v2LeftTitle">
+          <div class="v2-team-panel-head"><h2 id="v2LeftTitle">Team A</h2><span id="v2LeftSystem">5-1</span></div>
+          <section class="v2-roster-group"><h3>On court <span id="v2LeftCourtCount">0/6</span></h3><div class="v2-roster-list" id="v2LeftCourtList"></div></section>
+          <section class="v2-roster-group"><h3>On bench <span id="v2LeftBenchCount">0</span></h3><div class="v2-roster-list" id="v2LeftBenchList"></div></section>
+          <div class="v2-team-meta"><div><span>Libero</span><button class="v2-libero-switch" id="v2LeftLibero" type="button">--</button></div><div><span>Substitutions</span><strong id="v2LeftSubs">0/8</strong></div><div><span>Timeouts</span><strong id="v2LeftTimeouts">0/2</strong></div></div>
+          <div class="v2-team-actions" id="v2LeftActions"></div>
+        </aside>
+        <section class="v2-court-workspace" aria-labelledby="v2CourtTitle">
+          <div class="v2-court-head"><div><h1 id="v2CourtTitle">Live Court</h1><p>Rotation &amp; server order</p></div><div id="v2CourtHeadAction"></div></div>
+          <div class="v2-point-row" id="v2PointRow"></div>
+          <div class="v2-full-court" id="v2FullCourt" role="img" aria-label="Live court rotation and server order"><div class="v2-court-team v2-court-left" id="v2CourtLeft"></div><div class="v2-court-net" aria-hidden="true"></div><div class="v2-court-team v2-court-right" id="v2CourtRight"></div></div>
+          <div class="v2-court-actions" id="v2CourtActions"></div>
+          <div class="v2-court-status" id="v2CourtStatus"><span class="v2-persistent-server" id="v2PersistentServer">Serving: --</span></div>
+          <div class="v2-court-tools" id="v2CourtTools"><button class="btn secondary" id="btnOpenReceive" type="button">Receive Formation</button><span>Drag a bench player onto an on-court player to substitute.</span></div>
+        </section>
+        <aside class="v2-team-panel v2-away-panel" id="v2RightPanel" aria-labelledby="v2RightTitle">
+          <div class="v2-team-panel-head"><h2 id="v2RightTitle">Team B</h2><span id="v2RightSystem">5-1</span></div>
+          <section class="v2-roster-group"><h3>On court <span id="v2RightCourtCount">0/6</span></h3><div class="v2-roster-list" id="v2RightCourtList"></div></section>
+          <section class="v2-roster-group"><h3>On bench <span id="v2RightBenchCount">0</span></h3><div class="v2-roster-list" id="v2RightBenchList"></div></section>
+          <div class="v2-team-meta"><div><span>Libero</span><button class="v2-libero-switch" id="v2RightLibero" type="button">--</button></div><div><span>Substitutions</span><strong id="v2RightSubs">0/8</strong></div><div><span>Timeouts</span><strong id="v2RightTimeouts">0/2</strong></div></div>
+          <div class="v2-team-actions" id="v2RightActions"></div>
+        </aside>
+      </section>
+      <section class="v2-overlay-slot" id="v2OverlaySlot"></section>
+      <section class="v2-timeline-slot" id="v2TimelineSlot"></section>
+      <footer class="v2-utility-bar no-print" id="v2UtilityBar"></footer>
+    </main>
+
+    <div class="layout" id="v1Layout">
+      <!-- LEFT COLUMN: SCORE & CONTROLS -->
+      <section class="score-area">
+        <div class="teams-row">
+          <!-- Team A -->
+          <div class="team-card" id="homeCard">
+            <img class="serve-indicator" src="images/ui/mikasa.png" alt="Serving" />
+            <img class="team-logo" id="homeLogoDisplay" alt="" />
+            <div class="team-name" id="homeNameDisplay">Team A</div>
+            <div class="set-wins">Sets: <span id="homeSets">0</span></div>
+            <div class="main-score" id="homeScore">0</div>
+          </div>
+
+          <!-- Set info -->
+          <div class="set-info">
+            <span>Current Set</span>
+            <strong id="currentSetLabel">1</strong>
+          </div>
+
+          <!-- Team B -->
+          <div class="team-card" id="awayCard">
+            <img class="serve-indicator" src="images/ui/mikasa.png" alt="Serving" />
+            <img class="team-logo" id="awayLogoDisplay" alt="" />
+            <div class="team-name" id="awayNameDisplay">Team B</div>
+            <div class="set-wins">Sets: <span id="awaySets">0</span></div>
+            <div class="main-score" id="awayScore">0</div>
+          </div>
+        </div>
+
+        <div class="big-buttons-row">
+          <button class="btn big-btn left" id="btnPointHome">+1 Team A</button>
+          <button class="btn big-btn right" id="btnPointAway">+1 Team B</button>
+        </div>
+
+        <div class="middle-controls no-print">
+          <button class="btn secondary" id="btnUndo">Undo Last</button>
+          <button class="btn secondary hidden" id="btnSwitchSides" type="button" title="Switch court sides for the deciding set">Switch Sides</button>
+        </div>
+
+        <div class="tags-row">
+          <span class="tag">Best of 5 (Sets 1-4 to 25, Set 5 to 15)</span>
+          <span class="tag">Minimum 2-point difference</span>
+          <span class="tag" id="matchStatusTag">Status: Live</span>
+        </div>
+        <div class="set-summary-row">
+          <div class="set-summary-label">Set scores</div>
+          <div class="set-summary-values" id="setSummaryText">--</div>
+        </div>
+
+        <div class="controls-area no-print">
+          <!-- Team A controls -->
+          <div class="controls-group">
+            <h3>Team A - Controls</h3>
+            <div class="timeouts-subs" id="homeTimeoutsSubs">Timeouts: <span id="homeTimeouts">0</span>/2 (current set)
+              | Subs: <span id="homeSubs">0</span>/8</div>
+            <button class="btn secondary" id="btnTimeoutHome">Timeout A</button>
+            <button class="btn secondary" id="btnCardHomeYellow">Yellow Card A</button>
+            <button class="btn secondary" id="btnCardHomeRed">Red Card A</button>
+            <button class="btn secondary hidden" id="btnSubHome">Substitution A</button>
+          </div>
+
+          <!-- Team B controls -->
+          <div class="controls-group">
+            <h3>Team B - Controls</h3>
+            <div class="timeouts-subs" id="awayTimeoutsSubs">Timeouts: <span id="awayTimeouts">0</span>/2 (current set)
+              | Subs: <span id="awaySubs">0</span>/8</div>
+            <button class="btn secondary" id="btnTimeoutAway">Timeout B</button>
+            <button class="btn secondary" id="btnCardAwayYellow">Yellow Card B</button>
+            <button class="btn secondary" id="btnCardAwayRed">Red Card B</button>
+            <button class="btn secondary hidden" id="btnSubAway">Substitution B</button>
+          </div>
+        </div>
+
+        <div class="middle-controls no-print">
+          <button class="btn secondary" id="btnEndSet">End Set</button>
+          <button class="btn danger" id="btnEndMatch">End Match</button>
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN: LOG + SQUADS -->
+      <section class="log-area" id="rightWorkspace">
+        <div class="timeline-panel" id="timelinePanel">
+          <div class="timeline-head">
+            <h2>Match Timeline</h2>
+            <button class="btn secondary timeline-toggle no-print" id="btnToggleTimeline" type="button" aria-expanded="false" aria-controls="logList">Expand</button>
+          </div>
+          <div class="squad-list">
+            <div><strong id="homeSquadLabel">Team A Squad:</strong> <span id="homeSquadText">-</span></div>
+            <div><strong id="awaySquadLabel">Team B Squad:</strong> <span id="awaySquadText">-</span></div>
+          </div>
+          <ul class="log-list" id="logList"></ul>
+        </div>
+
+        <div class="right-lower-stack">
+        <section class="lineup-workspace no-print hidden" id="lineupWorkspace" aria-labelledby="lineupWorkspaceTitle">
+          <div class="lineup-workspace-head">
+            <div>
+              <h2 id="lineupWorkspaceTitle">Lineups, Rotation &amp; Serve</h2>
+              <p>Enter jersey numbers only. Slots L1 and L2 are reserved for liberos.</p>
+            </div>
+            <button class="btn secondary" id="btnCloseLineups" type="button">Close</button>
+          </div>
+
+          <div class="lineup-editors">
+            <article class="lineup-team-editor">
+              <h3 id="homeLineupEditorTitle">Team A</h3>
+              <div class="lineup-field-label">Squad numbers</div>
+              <div class="roster-number-grid" id="homeRosterInputs"></div>
+              <div class="libero-assignment" id="homeLiberoAssignment"></div>
+              <div class="lineup-field-label">Starting positions</div>
+              <div class="starting-position-grid" id="homeStartingInputs"></div>
+              <div class="five-one-role-map" id="homeRoleMap"></div>
+              <div class="lineup-validation" id="homeLineupValidation" role="status"></div>
+            </article>
+
+            <article class="lineup-team-editor">
+              <h3 id="awayLineupEditorTitle">Team B</h3>
+              <div class="lineup-field-label">Squad numbers</div>
+              <div class="roster-number-grid" id="awayRosterInputs"></div>
+              <div class="libero-assignment" id="awayLiberoAssignment"></div>
+              <div class="lineup-field-label">Starting positions</div>
+              <div class="starting-position-grid" id="awayStartingInputs"></div>
+              <div class="five-one-role-map" id="awayRoleMap"></div>
+              <div class="lineup-validation" id="awayLineupValidation" role="status"></div>
+            </article>
+          </div>
+
+          <div class="lineup-save-row">
+            <button class="btn" id="btnSaveLineups" type="button">Save Lineups</button>
+            <button class="btn secondary" id="btnSaveCurrentRoles" type="button">Save Current-Set Roles</button>
+            <div class="lineup-save-status" id="lineupSaveStatus" role="status"></div>
+          </div>
+
+          <section class="rotation-section" aria-labelledby="rotationSectionTitle">
+            <div class="rotation-section-head">
+              <div>
+                <h2 id="rotationSectionTitle">Live Rotation &amp; Serve</h2>
+                <p>Side-out rotations update automatically. Verify the visible server when needed.</p>
+              </div>
+            </div>
+            <div class="rotation-notice hidden" id="rotationNotice" role="status"></div>
+            <div class="rotation-wrapper">
+              <article class="rotation-team" id="homeRotationPanel">
+                <div class="rotation-team-head">
+                  <div class="rotation-team-heading">
+                    <h3 id="homeRotationTitle">Team A</h3>
+                    <select class="rotation-system" id="homeSystemSelect" aria-label="Team A playing system">
+                      <option value="5-1">5-1</option>
+                      <option value="6-0">6-0</option>
+                    </select>
+                  </div>
+                  <span class="serve-state" id="homeServeState">Receiving</span>
+                </div>
+                <div class="rotation-court-label">Net</div>
+                <div class="rotation-grid" id="homeRotationGrid"></div>
+                <div class="serve-order-row">
+                  <div><span>Current server</span><strong id="homeCurrentServer">--</strong></div>
+                  <div><span>Next</span><strong id="homeNextServers">--</strong></div>
+                  <div><span>Libero</span><strong id="homeLiberoLabel">--</strong></div>
+                </div>
+                <div class="server-check">
+                  <label for="homeServerInput">Observed server number</label>
+                  <div class="server-check-controls">
+                    <input id="homeServerInput" inputmode="numeric" autocomplete="off" placeholder="#" />
+                    <button class="btn secondary" type="button" data-verify-server="home">Verify</button>
+                  </div>
+                  <div class="server-check-result" id="homeServerResult" role="status">Not checked</div>
+                </div>
+              </article>
+
+              <article class="rotation-team" id="awayRotationPanel">
+                <div class="rotation-team-head">
+                  <div class="rotation-team-heading">
+                    <h3 id="awayRotationTitle">Team B</h3>
+                    <select class="rotation-system" id="awaySystemSelect" aria-label="Team B playing system">
+                      <option value="5-1">5-1</option>
+                      <option value="6-0">6-0</option>
+                    </select>
+                  </div>
+                  <span class="serve-state" id="awayServeState">Receiving</span>
+                </div>
+                <div class="rotation-court-label">Net</div>
+                <div class="rotation-grid" id="awayRotationGrid"></div>
+                <div class="serve-order-row">
+                  <div><span>Current server</span><strong id="awayCurrentServer">--</strong></div>
+                  <div><span>Next</span><strong id="awayNextServers">--</strong></div>
+                  <div><span>Libero</span><strong id="awayLiberoLabel">--</strong></div>
+                </div>
+                <div class="server-check">
+                  <label for="awayServerInput">Observed server number</label>
+                  <div class="server-check-controls">
+                    <input id="awayServerInput" inputmode="numeric" autocomplete="off" placeholder="#" />
+                    <button class="btn secondary" type="button" data-verify-server="away">Verify</button>
+                  </div>
+                  <div class="server-check-result" id="awayServerResult" role="status">Not checked</div>
+                </div>
+              </article>
+            </div>
+            <div class="rotation-empty hidden" id="rotationEmptyState">
+              Save both lineups to enable server-order checks.
+            </div>
+
+            <section class="serve-receive-example" id="serveReceiveExample" aria-labelledby="serveReceiveTitle">
+              <div class="serve-receive-head">
+                <div>
+                  <h2 id="serveReceiveTitle">Serve-Receive Formation</h2>
+                  <p id="serveReceiveCaption">Illustrative 5-1 receive formation: setter in P1.</p>
+                </div>
+                <span class="serve-receive-team" id="serveReceiveTeam">Receiving team</span>
+              </div>
+
+              <div class="receive-court" role="img" aria-label="Illustrative 5-1 serve-receive formation with the setter starting in position one">
+                <div class="receive-court-surface">
+                  <div class="receive-court-net">Net</div>
+                  <span class="receive-anchor anchor-p4">P4</span>
+                  <span class="receive-anchor anchor-p3">P3</span>
+                  <span class="receive-anchor anchor-p2">P2</span>
+                  <span class="receive-anchor anchor-p5">P5</span>
+                  <span class="receive-anchor anchor-p6">P6</span>
+                  <span class="receive-anchor anchor-p1">P1</span>
+
+                  <span class="receive-player role-opposite" data-role="opposite"><span>O</span><strong>--</strong></span>
+                  <span class="receive-player role-middle-two" data-role="middleTwo"><span>M2</span><strong>--</strong></span>
+                  <span class="receive-player role-middle-one is-replaced" data-role="middleOne"><span>M1</span><strong>--</strong></span>
+                  <span class="receive-player role-hitter-two" data-role="hitterTwo"><span>H2</span><strong>--</strong></span>
+                  <span class="receive-player role-libero" data-role="libero"><span>L</span><strong>--</strong></span>
+                  <span class="receive-player role-hitter-one" data-role="hitterOne"><span>H1</span><strong>--</strong></span>
+                  <span class="receive-player role-setter" data-role="setter"><span>S</span><strong>--</strong></span>
+                </div>
+              </div>
+
+              <p class="serve-receive-note">Example only: faded P1-P6 markers show the official rotation order. The displayed court is always the team receiving serve.</p>
+            </section>
+          </section>
+        </section>
+
+        </div>
+      </section>
+    </div>
+
+    <footer class="no-print">
+      <div class="timers">
+        <span class="timer-label">Match time:</span>
+        <span class="timer-value" id="matchTimer">00:00</span>
+        <span class="timer-label">Timeout:</span>
+        <span class="timer-value" id="timeoutTimer">--</span>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button class="btn secondary" id="btnOpenScoreboard">Open Scoreboard</button>
+        <button class="btn secondary" onclick="window.print()">Print / Export PDF</button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Match Summary Modal -->
+  <div id="matchSummaryOverlay" class="summary-overlay hidden no-print">
+    <div class="summary-panel">
+      <div class="summary-header">
+        <div>
+          <div class="summary-title">Match Summary</div>
+          <div class="summary-sub" id="summaryMatchId"></div>
+        </div>
+        <button class="btn secondary" id="btnCloseSummary">Close</button>
+      </div>
+      <div class="summary-body">
+        <div class="summary-row">
+          <div class="summary-label">Result</div>
+          <div class="summary-value" id="summaryResult"></div>
+        </div>
+        <div class="summary-row">
+          <div class="summary-label">Duration</div>
+          <div class="summary-value" id="summaryDuration"></div>
+        </div>
+        <div class="summary-row">
+          <div class="summary-label">Set Scores</div>
+          <div class="summary-value" id="summarySets"></div>
+        </div>
+        <div class="summary-row">
+          <div class="summary-label">Cards</div>
+          <div class="summary-value" id="summaryCards"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="cardEntryOverlay" class="summary-overlay hidden no-print">
+    <div class="summary-panel card-entry-panel">
+      <div class="summary-header">
+        <div>
+          <div class="summary-title" id="cardEntryTitle">Card</div>
+          <div class="summary-sub" id="cardEntryTeam">Team</div>
+        </div>
+        <button class="btn secondary" id="btnCloseCardEntry">Close</button>
+      </div>
+      <div class="card-entry-body">
+        <div id="cardEntryEmoji" class="card-entry-emoji" aria-hidden="true">🟨</div>
+        <label for="cardPlayerNumberInput" class="summary-label">Player Number</label>
+        <input type="text" id="cardPlayerNumberInput" class="card-entry-input" placeholder="e.g. 12" />
+        <div class="summary-sub">Leave blank for team/coach sanction.</div>
+        <button class="btn" id="btnConfirmCardEntry">Confirm Card</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="setCompletionOverlay" class="summary-overlay hidden no-print" role="dialog" aria-modal="true" aria-labelledby="setCompletionTitle">
+    <div class="summary-panel completion-panel">
+      <div class="summary-header">
+        <div>
+          <div class="summary-title" id="setCompletionTitle">Set Complete</div>
+          <div class="summary-sub" id="setCompletionScore"></div>
+        </div>
+      </div>
+      <p class="completion-message" id="setCompletionMessage"></p>
+      <div class="completion-actions">
+        <button class="btn secondary" id="btnCancelSetCompletion" type="button">Continue Scoring</button>
+        <button class="btn" id="btnConfirmSetCompletion" type="button">Confirm End Set</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tieBreakServeOverlay" class="summary-overlay hidden no-print" role="dialog" aria-modal="true" aria-labelledby="tieBreakServeTitle">
+    <div class="summary-panel completion-panel">
+      <div class="summary-header">
+        <div>
+          <div class="summary-title" id="tieBreakServeTitle">Set 5 Serve</div>
+          <div class="summary-sub">Choose first serve and the starting court side.</div>
+        </div>
+      </div>
+      <div class="tie-break-setup-group">
+        <div class="summary-label">First serve</div>
+        <div class="completion-actions tie-break-serve-actions">
+          <button class="btn secondary" id="btnTieBreakHomeServe" type="button">Team A Serves</button>
+          <button class="btn secondary" id="btnTieBreakAwayServe" type="button">Team B Serves</button>
+        </div>
+      </div>
+      <div class="tie-break-setup-group">
+        <div class="summary-label">Starts on left</div>
+        <div class="completion-actions tie-break-serve-actions">
+          <button class="btn secondary" id="btnTieBreakHomeLeft" type="button">Team A Left</button>
+          <button class="btn secondary" id="btnTieBreakAwayLeft" type="button">Team B Left</button>
+        </div>
+      </div>
+      <button class="btn" id="btnConfirmTieBreakSetup" type="button" disabled>Start Tiebreak</button>
+    </div>
+  </div>
+
+  <div id="refereeShareOverlay" class="summary-overlay hidden no-print" role="dialog" aria-modal="true" aria-labelledby="refereeShareTitle">
+    <div class="summary-panel referee-share-panel">
+      <div class="summary-header">
+        <div>
+          <div class="summary-title" id="refereeShareTitle">Second Referee</div>
+          <div class="summary-sub">Scan to open the live rotation and service-order view.</div>
+        </div>
+        <button class="btn secondary" id="btnCloseRefereeShare" type="button">Close</button>
+      </div>
+      <div class="referee-share-body">
+        <div id="refereeQrCode" class="referee-qr" aria-label="QR code for the second referee"></div>
+        <p id="refereeShareStatus" class="referee-share-status" role="status">Preparing secure link...</p>
+        <label class="summary-label" for="refereeShareLink">Referee link</label>
+        <div class="referee-link-row">
+          <input id="refereeShareLink" type="text" readonly aria-label="Second referee link" />
+          <button class="btn secondary" id="btnCopyRefereeLink" type="button">Copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/obs-websocket-js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="obsClient.js"></script>
+  <script src="matchRules.js"></script>
+  <script src="liveConfig.js"></script>
+  <script src="script.js"></script>
+</body>
+
+</html>

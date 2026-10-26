@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="referrer" content="no-referrer" />
+  <title>IVI Referee View</title>
+  <link rel="stylesheet" href="referee.css" />
+</head>
+<body>
+  <main class="referee-app">
+    <header class="referee-header">
+      <div>
+        <p class="eyebrow">IVI 26/27 Season</p>
+        <h1>Second Referee</h1>
+        <p id="matchLabel" class="match-label">Loading match...</p>
+      </div>
+      <div id="connectionState" class="connection-state" aria-live="polite">Connecting</div>
+    </header>
+
+    <section class="score-strip" aria-label="Current score">
+      <div><span id="homeName">Team A</span><strong id="homeScore">-</strong><small>Sets <b id="homeSets">0</b></small></div>
+      <div class="set-state"><span>Set</span><strong id="setNumber">1</strong><small id="serveState">--</small></div>
+      <div><span id="awayName">Team B</span><strong id="awayScore">-</strong><small>Sets <b id="awaySets">0</b></small></div>
+    </section>
+
+    <section class="section-heading">
+      <div><p class="eyebrow">Rotation &amp; Serve</p><h2>Live court order</h2></div>
+      <p id="updatedAt" class="updated-at">Waiting for match data</p>
+    </section>
+    <section id="rotationCards" class="rotation-cards"></section>
+
+    <section id="receiveSection" class="receive-section hidden">
+      <div class="section-heading compact">
+        <div><p class="eyebrow">Serve-Receive</p><h2 id="receiveTitle">Receiving team</h2></div>
+        <span id="receiveMeta" class="pill">5-1</span>
+      </div>
+      <div class="receive-court">
+        <div class="court-net">NET</div>
+        <div class="court-line mid"></div>
+        <span class="court-pos p4">P4</span><span class="court-pos p3">P3</span><span class="court-pos p2">P2</span>
+        <span class="court-pos p5">P5</span><span class="court-pos p6">P6</span><span class="court-pos p1">P1</span>
+        <div id="receivePlayers"></div>
+      </div>
+      <p class="receive-note">Visual receive plan. Rotation cells above remain the official service order.</p>
+    </section>
+    <p id="errorMessage" class="error-message hidden" role="alert"></p>
+  </main>
+  <script src="liveConfig.js"></script>
+  <script src="referee.js"></script>
+</body>
+</html>
