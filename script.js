@@ -157,7 +157,13 @@ async function openRefereeShare() {
   if (button) button.disabled = true;
   try {
     if (!liveSession || liveSession.localMatchId !== match.id) {
-      const created = await sendLiveRequest({ action: "create", match_state: match });
+      const createToken = window.prompt("Enter the staff live-sharing code.");
+      if (!createToken?.trim()) return;
+      const created = await sendLiveRequest({
+        action: "create",
+        create_token: createToken.trim(),
+        match_state: match
+      });
       liveSession = {
         localMatchId: match.id,
         remoteMatchId: created.match_id,
@@ -172,7 +178,7 @@ async function openRefereeShare() {
   } catch (error) {
     const status = document.getElementById("refereeShareStatus");
     if (status) {
-      status.textContent = error.message || "Could not create the referee link.";
+      status.textContent = "Could not create the referee link. Check the live-sharing configuration and try again.";
       status.classList.add("error");
     }
     document.getElementById("refereeShareOverlay")?.classList.remove("hidden");
@@ -790,12 +796,12 @@ function legacySetLineups() {
 }
 
 const STARTING_POSITION_LAYOUT = [
-  { label: "P4", index: 3 },
-  { label: "P3", index: 2 },
-  { label: "P2", index: 1 },
-  { label: "P5", index: 4 },
-  { label: "P6", index: 5 },
-  { label: "P1", index: 0 }
+  { label: "P4", role: "Opp", index: 3 },
+  { label: "P3", role: "OH1", index: 2 },
+  { label: "P2", role: "MB1", index: 1 },
+  { label: "P5", role: "MB2", index: 4 },
+  { label: "P6", role: "OH2", index: 5 },
+  { label: "P1", role: "Setter", index: 0 }
 ];
 
 const FIVE_ONE_ROLE_FIELDS = [
@@ -806,6 +812,38 @@ const FIVE_ONE_ROLE_FIELDS = [
   { key: "hitterOne", label: "H1" },
   { key: "hitterTwo", label: "H2" }
 ];
+
+const FIVE_ONE_STARTING_ROLE_INDEX = {
+  setter: 0,
+  middleOne: 1,
+  hitterOne: 2,
+  opposite: 3,
+  middleTwo: 4,
+  hitterTwo: 5
+};
+
+function getFiveOneStartingRoleMap(starting) {
+  return Object.fromEntries(
+    Object.entries(FIVE_ONE_STARTING_ROLE_INDEX).map(([role, index]) => [role, starting[index] || null])
+  );
+}
+
+function getLineupStartingInputValues(team) {
+  const values = Array(6).fill(null);
+  document.querySelectorAll(`#${team}StartingInputs input[data-rotation-index]`).forEach(input => {
+    values[Number(input.dataset.rotationIndex)] = input.value.trim() || null;
+  });
+  return values;
+}
+
+function renderLineupSystemToggle(team) {
+  const system = match?.[team === "home" ? "homeSystem" : "awaySystem"] === "6-0" ? "6-0" : "5-1";
+  document.querySelectorAll(`[data-lineup-system="${team}"]`).forEach(button => {
+    const selected = button.dataset.system === system;
+    button.classList.toggle("active", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  });
+}
 
 function sanitizeJerseyInput(input) {
   input.value = input.value.replace(/\D/g, "").slice(0, 2);
@@ -853,11 +891,7 @@ function createNumberInput(id, label, value, className, data = {}) {
     sanitizeJerseyInput(input);
     if (Number(input.dataset.rosterSlot) >= 12) updateLiberoSelectOptions(input.dataset.team);
     if (input.dataset.rotationIndex !== undefined) {
-      const currentStarting = Array(6).fill(null);
-      document.querySelectorAll(`#${input.dataset.team}StartingInputs input`).forEach(startingInput => {
-        currentStarting[Number(startingInput.dataset.rotationIndex)] = startingInput.value.trim() || null;
-      });
-      renderFiveOneRoleMap(input.dataset.team, currentStarting);
+      renderFiveOneRoleMap(input.dataset.team, getLineupStartingInputValues(input.dataset.team));
     }
     validateLineupTeam(input.dataset.team);
     const status = document.getElementById("lineupSaveStatus");
@@ -955,8 +989,10 @@ function renderLineupEditor(team) {
   const nameSlots = getStoredRosterNameSlots(team, slots);
   const starting = (isHome ? match.homeStartingSix : match.awayStartingSix) || [];
   const values = starting.some(Boolean) ? starting : slots.slice(0, 6);
+  const system = match[team === "home" ? "homeSystem" : "awaySystem"] === "6-0" ? "6-0" : "5-1";
 
   title.textContent = isHome ? match.homeTeam : match.awayTeam;
+  renderLineupSystemToggle(team);
   rosterContainer.innerHTML = "";
   slots.forEach((value, index) => {
     rosterContainer.appendChild(createLineupRosterRow(team, index, value, nameSlots[index]));
@@ -967,7 +1003,7 @@ function renderLineupEditor(team) {
   STARTING_POSITION_LAYOUT.forEach(position => {
     const field = createNumberInput(
       `${team}Start${position.label}`,
-      position.label,
+      system === "5-1" ? `${position.label} - ${position.role}` : position.label,
       values[position.index],
       "starting-position-field",
       { team, rotationIndex: String(position.index) }
@@ -1050,10 +1086,7 @@ function createLineupRosterRow(team, index, value, slotName = "") {
 }
 
 function refreshLineupStartingState(team) {
-  const currentStarting = Array(6).fill(null);
-  document.querySelectorAll(`#${team}StartingInputs input[data-rotation-index]`).forEach(startingInput => {
-    currentStarting[Number(startingInput.dataset.rotationIndex)] = startingInput.value.trim() || null;
-  });
+  const currentStarting = getLineupStartingInputValues(team);
   renderFiveOneRoleMap(team, currentStarting);
   validateLineupTeam(team);
   const status = document.getElementById("lineupSaveStatus");
@@ -1088,12 +1121,17 @@ function renderFiveOneRoleMap(team, starting) {
   if (system === "6-0") return;
 
   const existingSelections = Object.fromEntries(FIVE_ONE_ROLE_FIELDS
-    .map(({ key }) => [key, document.getElementById(`${team}Role${key}`)?.value])
-    .filter(([, value]) => value !== undefined));
+    .map(({ key }) => {
+      const input = document.getElementById(`${team}Role${key}`);
+      return [key, input?.dataset.manual === "true" ? input.value : null];
+    })
+    .filter(([, value]) => Boolean(value)));
   const activeRoleMap = Object.fromEntries(
-    Object.entries(getEffectiveRoleMap(team)).map(([key, number]) => [key, getActiveRoleNumber(team, number)])
+    Object.entries(match?.[`${team}RoleMapOverride`] || {})
+      .filter(([, number]) => Boolean(number))
+      .map(([key, number]) => [key, getActiveRoleNumber(team, number)])
   );
-  const roleMap = { ...activeRoleMap, ...existingSelections };
+  const roleMap = { ...getFiveOneStartingRoleMap(starting), ...activeRoleMap, ...existingSelections };
   const baseRotation = match[team === "home" ? "homeBaseRotation" : "awayBaseRotation"] || [];
   const eligiblePlayers = [...new Set([...starting, ...baseRotation].filter(Boolean))];
   container.innerHTML = "";
@@ -1112,6 +1150,7 @@ function renderFiveOneRoleMap(team, starting) {
     input.type = "hidden";
     input.id = `${team}Role${key}`;
     input.value = eligiblePlayers.includes(roleMap[key]) ? roleMap[key] : "";
+    if (existingSelections[key]) input.dataset.manual = "true";
     const target = document.createElement("div");
     target.className = "five-one-role-target";
     target.tabIndex = 0;
@@ -1120,6 +1159,7 @@ function renderFiveOneRoleMap(team, starting) {
     enableLineupDropTarget(target, team, number => {
       if (!eligiblePlayers.includes(number)) return;
       input.value = number;
+      input.dataset.manual = "true";
       target.textContent = `#${number}`;
       validateLineupTeam(team);
     });
@@ -1324,6 +1364,7 @@ function saveLineupsFromWorkspace() {
     syncPlayerNamesWithRoster(team);
   });
 
+  applyOpeningReceiveRotation(true);
   updateCurrentCourt("home");
   updateCurrentCourt("away");
   resetServerVerification();
@@ -1380,6 +1421,7 @@ function confirmLineupsForNextSet() {
     match.awayBaseRotation = match.awayStartingSix.slice();
     match.awayRotationCount = 0;
   }
+  if (!match.tieBreakServeSelectionPending) applyOpeningReceiveRotation();
   updateCurrentCourt("home");
   updateCurrentCourt("away");
   resetServerVerification();
@@ -1396,6 +1438,50 @@ function rotateBaseOnce(team) {
   arr.push(arr.shift());
   match[rotationCountKey] = ((match[rotationCountKey] || 0) + 1) % 6;
   updateCurrentCourt(team);
+}
+
+function rotateBaseBackwardOnce(team) {
+  const baseKey = team === "home" ? "homeBaseRotation" : "awayBaseRotation";
+  const rotationCountKey = team === "home" ? "homeRotationCount" : "awayRotationCount";
+  const arr = match[baseKey];
+  if (!arr || arr.length !== 6) return;
+  arr.unshift(arr.pop());
+  match[rotationCountKey] = ((match[rotationCountKey] || 0) + 5) % 6;
+  updateCurrentCourt(team);
+}
+
+function applyOpeningReceiveRotation(force = false) {
+  if (!match || match.homeSystem !== "5-1" || match.awaySystem !== "5-1") return;
+  const set = match.sets?.[match.sets.length - 1];
+  if (!set || set.homePoints || set.awayPoints) return;
+  if (!force && match.openingReceiveRotationSetNumber === set.setNumber) return;
+  const receivingTeam = match.serving === "home" ? "away" : "home";
+  const base = match[`${receivingTeam}BaseRotation`] || [];
+  if (base.length !== 6 || !base.every(Boolean)) return;
+  rotateBaseBackwardOnce(receivingTeam);
+  match.openingReceiveRotationSetNumber = set.setNumber;
+  addEvent(
+    "ROTATION_SETUP",
+    `${receivingTeam === "home" ? match.homeTeam : match.awayTeam} starts receiving one rotation back in 5-1.`,
+    receivingTeam
+  );
+}
+
+function correctRotation(team, direction) {
+  if (!match || match.status === "finished") return;
+  const base = match[`${team}BaseRotation`] || [];
+  if (base.length !== 6 || !base.every(Boolean)) return;
+  const forward = direction === "forward";
+  if (forward) rotateBaseOnce(team);
+  else rotateBaseBackwardOnce(team);
+  resetServerVerification();
+  updateCurrentCourt("home");
+  updateCurrentCourt("away");
+  const teamName = team === "home" ? match.homeTeam : match.awayTeam;
+  rotationNoticeText = `${teamName} rotation corrected ${forward ? "forward" : "back"} one position.`;
+  addEvent("ROTATION_CORRECTION", `${teamName} rotation corrected ${forward ? "forward" : "back"} one position.`, team, { direction });
+  saveMatchToStorage();
+  renderAll();
 }
 
 function updateCurrentCourt(team) {
@@ -1919,6 +2005,7 @@ function confirmTieBreakSetup() {
   match.serving = firstServer;
   match.homeOnLeft = homeOnLeft;
   match.tieBreakServeSelectionPending = false;
+  applyOpeningReceiveRotation();
   updateCurrentCourt("home");
   updateCurrentCourt("away");
   resetServerVerification();
@@ -2277,7 +2364,9 @@ function renderRotation() {
     panel.classList.toggle("is-serving", isServing);
     state.textContent = isServing ? "Serving" : "Receiving";
     document.getElementById(`${team}RotationTitle`).textContent = isHome ? match.homeTeam : match.awayTeam;
-    systemSelect.value = (isHome ? match.homeSystem : match.awaySystem) === "6-0" ? "6-0" : "5-1";
+    if (systemSelect) {
+      systemSelect.value = (isHome ? match.homeSystem : match.awaySystem) === "6-0" ? "6-0" : "5-1";
+    }
     document.getElementById(`${team}CurrentServer`).textContent =
       isServing && hasLineup ? `#${order[0]}` : "--";
     const next = hasLineup ? order.slice(1, 3).map(n => `#${n}`).join(", ") : "--";
@@ -2355,6 +2444,12 @@ function getActiveRoleNumber(team, roleNumber) {
 function setTeamSystem(team, system) {
   if (!match) return;
   match[team === "home" ? "homeSystem" : "awaySystem"] = system === "6-0" ? "6-0" : "5-1";
+  const currentStarting = getLineupStartingInputValues(team);
+  renderLineupSystemToggle(team);
+  renderFiveOneRoleMap(team, currentStarting.some(Boolean)
+    ? currentStarting
+    : (team === "home" ? match.homeStartingSix : match.awayStartingSix) || []);
+  validateLineupTeam(team);
   saveMatchToStorage();
   renderRotation();
 }
@@ -2465,6 +2560,9 @@ function setupV2Layout() {
   moveToV2("btnLineups", "v2CourtTools");
 
   document.getElementById("btnOpenReceive")?.addEventListener("click", openReceiveFormation);
+  document.querySelectorAll("[data-rotation-correction-team]").forEach(button => {
+    button.addEventListener("click", () => correctRotation(button.dataset.rotationCorrectionTeam, button.dataset.rotationDirection));
+  });
   document.getElementById("v2LeftLibero")?.addEventListener("click", () => switchActiveLiberoForSide("left"));
   document.getElementById("v2RightLibero")?.addEventListener("click", () => switchActiveLiberoForSide("right"));
 
@@ -2514,7 +2612,22 @@ function renderV2RosterList(target, teamData, onCourt) {
     row.dataset.team = teamData.team;
     row.dataset.player = number;
     row.dataset.onCourt = String(onCourt);
-    row.innerHTML = `<span class="v2-player-number">${number}</span><span class="v2-player-name">${teamData.names[number] || (isLibero ? "Libero" : "Player")}</span>${onCourt ? `<span class="v2-player-position">P${index + 1}</span>` : "<span class=\"v2-drag-handle\" aria-hidden=\"true\">::</span>"}`;
+    const numberLabel = document.createElement("span");
+    numberLabel.className = "v2-player-number";
+    numberLabel.textContent = number;
+    const nameLabel = document.createElement("span");
+    nameLabel.className = "v2-player-name";
+    nameLabel.textContent = teamData.names[number] || (isLibero ? "Libero" : "Player");
+    const detail = document.createElement("span");
+    if (onCourt) {
+      detail.className = "v2-player-position";
+      detail.textContent = `P${index + 1}`;
+    } else {
+      detail.className = "v2-drag-handle";
+      detail.setAttribute("aria-hidden", "true");
+      detail.textContent = "::";
+    }
+    row.append(numberLabel, nameLabel, detail);
 
     if (!onCourt && !isLibero) {
       row.draggable = true;
@@ -2924,9 +3037,27 @@ function renderV2Workspace() {
   const servingBase = match.serving === "home" ? match.homeBaseRotation : match.awayBaseRotation;
   const servingNumber = getServeOrder(servingBase || [])[0] || "--";
   const serving = document.getElementById("v2ServingState");
-  if (serving) serving.innerHTML = `<img src="images/ui/mikasa.png" alt="" /><span>${servingName} serving</span>`;
+  if (serving) {
+    const ball = document.createElement("img");
+    ball.src = "images/ui/mikasa.png";
+    ball.alt = "";
+    const label = document.createElement("span");
+    label.textContent = `${servingName} serving`;
+    serving.replaceChildren(ball, label);
+  }
   const persistentServer = document.getElementById("v2PersistentServer");
   if (persistentServer) persistentServer.textContent = `Serving: ${servingName} · #${servingNumber}`;
+
+  document.querySelectorAll("[data-rotation-correction-team]").forEach(button => {
+    const team = button.dataset.rotationCorrectionTeam;
+    const direction = button.dataset.rotationDirection;
+    const teamName = team === "home" ? match.homeTeam : match.awayTeam;
+    const base = match[`${team}BaseRotation`] || [];
+    const canCorrect = match.status !== "finished" && base.length === 6 && base.every(Boolean);
+    button.textContent = direction === "forward" ? "Forward 1" : "Back 1";
+    button.title = `Move ${teamName} ${direction} one rotation`;
+    button.disabled = !canCorrect;
+  });
 }
 
 function getScoreboardPayload() {
@@ -3460,8 +3591,9 @@ if (lineupsBtn) lineupsBtn.addEventListener("click", () => setLineups());
 document.getElementById("btnCloseLineups")?.addEventListener("click", closeLineupWorkspace);
 document.getElementById("btnSaveLineups")?.addEventListener("click", saveLineupsFromWorkspace);
 document.getElementById("btnSaveCurrentRoles")?.addEventListener("click", saveCurrentSetRoles);
-document.getElementById("homeSystemSelect")?.addEventListener("change", event => setTeamSystem("home", event.target.value));
-document.getElementById("awaySystemSelect")?.addEventListener("change", event => setTeamSystem("away", event.target.value));
+document.querySelectorAll("[data-lineup-system]").forEach(button => {
+  button.addEventListener("click", () => setTeamSystem(button.dataset.lineupSystem, button.dataset.system));
+});
 document.getElementById("btnToggleTimeline")?.addEventListener("click", toggleTimeline);
 
 document.querySelectorAll("[data-verify-server]").forEach(button => {

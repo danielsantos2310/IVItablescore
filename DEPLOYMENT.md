@@ -20,6 +20,8 @@ The site deploys as static files from the repository root. `netlify.toml` sets `
 
 - `liveConfig.js` contains the public Supabase URL, publishable key, and Edge Function URL. These are safe to ship because the database remains protected by RLS and function tokens.
 - Supabase service keys exist only in the Edge Function environment.
+- Set the Supabase Edge Function secret `LIVE_MATCH_ALLOWED_ORIGINS` to the exact Netlify/custom dashboard origins allowed to create, update, and read live referee sessions. Include the local server origin only for development, for example `http://127.0.0.1:5501`.
+- Set the Supabase Edge Function secret `LIVE_MATCH_CREATE_TOKEN` to a random 32-character-or-longer staff-only value. Scorers must enter this code when creating a new Second Referee QR session.
 - Keep OBS placeholders in `obsClient.js` for production. Local OBS requires a trusted local setup.
 
 ## Rollback

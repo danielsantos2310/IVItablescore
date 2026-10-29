@@ -77,7 +77,10 @@
           <div class="v2-full-court" id="v2FullCourt" role="img" aria-label="Live court rotation and server order"><div class="v2-court-team v2-court-left" id="v2CourtLeft"></div><div class="v2-court-net" aria-hidden="true"></div><div class="v2-court-team v2-court-right" id="v2CourtRight"></div></div>
           <div class="v2-court-actions" id="v2CourtActions"></div>
           <div class="v2-court-status" id="v2CourtStatus"><span class="v2-persistent-server" id="v2PersistentServer">Serving: --</span></div>
-          <div class="v2-court-tools" id="v2CourtTools"><button class="btn secondary" id="btnOpenReceive" type="button">Receive Formation</button><span>Drag a bench player onto an on-court player to substitute.</span></div>
+          <div class="v2-court-tools" id="v2CourtTools">
+            <button class="btn secondary" id="btnOpenReceive" type="button">Receive Formation</button>
+            <span>Drag a bench player onto an on-court player to substitute.</span>
+          </div>
         </section>
         <aside class="v2-team-panel v2-away-panel" id="v2RightPanel" aria-labelledby="v2RightTitle">
           <div class="v2-team-panel-head"><h2 id="v2RightTitle">Team B</h2><span id="v2RightSystem">5-1</span></div>
@@ -198,9 +201,18 @@
           <div class="lineup-editors">
             <article class="lineup-team-editor">
               <h3 id="homeLineupEditorTitle">Team A</h3>
+              <div class="lineup-system-toggle" role="group" aria-label="Team A playing system">
+                <button class="btn secondary" type="button" data-lineup-system="home" data-system="5-1" aria-pressed="true">5-1</button>
+                <button class="btn secondary" type="button" data-lineup-system="home" data-system="6-0" aria-pressed="false">6-0</button>
+              </div>
               <div class="lineup-field-label">Squad numbers</div>
               <div class="roster-number-grid" id="homeRosterInputs"></div>
               <div class="libero-assignment" id="homeLiberoAssignment"></div>
+              <div class="lineup-rotation-correction" aria-label="Team A rotation correction">
+                <span>Rotation correction</span>
+                <button class="btn secondary" type="button" data-rotation-correction-team="home" data-rotation-direction="back" title="Move Team A back one rotation">Back 1</button>
+                <button class="btn secondary" type="button" data-rotation-correction-team="home" data-rotation-direction="forward" title="Move Team A forward one rotation">Forward 1</button>
+              </div>
               <div class="lineup-field-label">Starting positions</div>
               <div class="starting-position-grid" id="homeStartingInputs"></div>
               <div class="five-one-role-map" id="homeRoleMap"></div>
@@ -209,9 +221,18 @@
 
             <article class="lineup-team-editor">
               <h3 id="awayLineupEditorTitle">Team B</h3>
+              <div class="lineup-system-toggle" role="group" aria-label="Team B playing system">
+                <button class="btn secondary" type="button" data-lineup-system="away" data-system="5-1" aria-pressed="true">5-1</button>
+                <button class="btn secondary" type="button" data-lineup-system="away" data-system="6-0" aria-pressed="false">6-0</button>
+              </div>
               <div class="lineup-field-label">Squad numbers</div>
               <div class="roster-number-grid" id="awayRosterInputs"></div>
               <div class="libero-assignment" id="awayLiberoAssignment"></div>
+              <div class="lineup-rotation-correction" aria-label="Team B rotation correction">
+                <span>Rotation correction</span>
+                <button class="btn secondary" type="button" data-rotation-correction-team="away" data-rotation-direction="back" title="Move Team B back one rotation">Back 1</button>
+                <button class="btn secondary" type="button" data-rotation-correction-team="away" data-rotation-direction="forward" title="Move Team B forward one rotation">Forward 1</button>
+              </div>
               <div class="lineup-field-label">Starting positions</div>
               <div class="starting-position-grid" id="awayStartingInputs"></div>
               <div class="five-one-role-map" id="awayRoleMap"></div>
@@ -238,10 +259,6 @@
                 <div class="rotation-team-head">
                   <div class="rotation-team-heading">
                     <h3 id="homeRotationTitle">Team A</h3>
-                    <select class="rotation-system" id="homeSystemSelect" aria-label="Team A playing system">
-                      <option value="5-1">5-1</option>
-                      <option value="6-0">6-0</option>
-                    </select>
                   </div>
                   <span class="serve-state" id="homeServeState">Receiving</span>
                 </div>
@@ -266,10 +283,6 @@
                 <div class="rotation-team-head">
                   <div class="rotation-team-heading">
                     <h3 id="awayRotationTitle">Team B</h3>
-                    <select class="rotation-system" id="awaySystemSelect" aria-label="Team B playing system">
-                      <option value="5-1">5-1</option>
-                      <option value="6-0">6-0</option>
-                    </select>
                   </div>
                   <span class="serve-state" id="awayServeState">Receiving</span>
                 </div>
@@ -459,7 +472,7 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/obs-websocket-js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/obs-websocket-js@5.0.6"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="obsClient.js"></script>
   <script src="matchRules.js"></script>

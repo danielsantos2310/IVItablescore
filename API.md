@@ -12,10 +12,12 @@ Responses use JSON and `Cache-Control: no-store`. CORS accepts the static dashbo
 
 ### Create a share session
 
+The request must come from an origin listed in the Edge Function's `LIVE_MATCH_ALLOWED_ORIGINS` secret and include the staff-only `LIVE_MATCH_CREATE_TOKEN` as `create_token`. This code is entered by the scorer and is not stored in the browser.
+
 `POST /live-match`
 
 ```json
-{ "action": "create", "match_state": { "id": "IVI-001" } }
+{ "action": "create", "create_token": "staff-only-secret", "match_state": { "id": "IVI-001" } }
 ```
 
 Response `201`:
