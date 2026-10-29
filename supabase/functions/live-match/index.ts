@@ -1,16 +1,35 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+const allowedOrigins = new Set(
+  (Deno.env.get("LIVE_MATCH_ALLOWED_ORIGINS") ?? "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+);
+
+function corsHeadersFor(request: Request) {
+  const origin = request.headers.get("origin");
+  if (!origin || !allowedOrigins.has(origin)) return null;
+  return {
+    "Access-Control-Allow-Origin": origin,
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
-};
+    "Vary": "Origin",
+  };
+}
 
-function json(body: unknown, status = 200) {
+function json(body: unknown, corsHeaders: Record<string, string>, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: corsHeaders });
+}
+
+function forbidden() {
+  return new Response(JSON.stringify({ error: "Origin not allowed." }), {
+    status: 403,
+    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
+  });
 }
 
 function getSecretKey() {
@@ -44,6 +63,12 @@ async function hash(value: unknown) {
   return Array.from(new Uint8Array(digest)).map((part) => part.toString(16).padStart(2, "0")).join("");
 }
 
+async function hasValidCreateToken(value: unknown) {
+  const configured = Deno.env.get("LIVE_MATCH_CREATE_TOKEN");
+  if (!configured) return false;
+  return (await hash(configured)) === (await hash(value));
+}
+
 function isUuid(value: unknown): value is string {
   return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
@@ -51,13 +76,19 @@ function isUuid(value: unknown): value is string {
 function validState(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   try {
-    return JSON.stringify(value).length <= 400_000;
+    const state = value as Record<string, unknown>;
+    const teamNamesValid = [state.homeTeam, state.awayTeam]
+      .every((name) => typeof name === "string" && name.length <= 100);
+    const matchIdValid = state.id === undefined || (typeof state.id === "string" && state.id.length <= 100);
+    return teamNamesValid && matchIdValid && JSON.stringify(value).length <= 400_000;
   } catch {
     return false;
   }
 }
 
 Deno.serve(async (request) => {
+  const corsHeaders = corsHeadersFor(request);
+  if (!corsHeaders) return forbidden();
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
@@ -72,7 +103,7 @@ Deno.serve(async (request) => {
       const matchId = url.searchParams.get("match_id");
       const refereeToken = url.searchParams.get("token");
 
-      if (!isUuid(matchId)) return json({ error: "Invalid match link." }, 400);
+      if (!isUuid(matchId)) return json({ error: "Invalid match link." }, corsHeaders, 400);
       const refereeTokenHash = await hash(refereeToken);
 
       const { data, error } = await admin
@@ -83,18 +114,21 @@ Deno.serve(async (request) => {
         .maybeSingle();
 
       if (error) throw error;
-      if (!data) return json({ error: "This referee link is not available." }, 404);
+      if (!data) return json({ error: "This referee link is not available." }, corsHeaders, 404);
 
-      return json({ state: data.match_state, status: data.status, revision: data.revision, updated_at: data.updated_at });
+      return json({ state: data.match_state, status: data.status, revision: data.revision, updated_at: data.updated_at }, corsHeaders);
     }
 
-    if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
+    if (request.method !== "POST") return json({ error: "Method not allowed." }, corsHeaders, 405);
 
     const body = await request.json();
     const action = body?.action;
 
     if (action === "create") {
-      if (!validState(body.match_state)) return json({ error: "Invalid match state." }, 400);
+      if (!await hasValidCreateToken(body.create_token)) {
+        return json({ error: "Not authorized." }, corsHeaders, 403);
+      }
+      if (!validState(body.match_state)) return json({ error: "Invalid match state." }, corsHeaders, 400);
 
       const staffToken = token();
       const refereeToken = token();
@@ -109,12 +143,12 @@ Deno.serve(async (request) => {
         .single();
 
       if (error) throw error;
-      return json({ match_id: data.id, staff_token: staffToken, referee_token: refereeToken, revision: data.revision }, 201);
+      return json({ match_id: data.id, staff_token: staffToken, referee_token: refereeToken, revision: data.revision }, corsHeaders, 201);
     }
 
     if (action === "update" || action === "finish") {
       if (!isUuid(body.match_id) || !validState(body.match_state)) {
-        return json({ error: "Invalid live match update." }, 400);
+        return json({ error: "Invalid live match update." }, corsHeaders, 400);
       }
 
       const staffTokenHash = await hash(body.staff_token);
@@ -133,14 +167,14 @@ Deno.serve(async (request) => {
         .maybeSingle();
 
       if (error) throw error;
-      if (!data) return json({ error: "Live session not found." }, 404);
-      return json({ revision: data.revision, status });
+      if (!data) return json({ error: "Live session not found." }, corsHeaders, 404);
+      return json({ revision: data.revision, status }, corsHeaders);
     }
 
-    return json({ error: "Unknown action." }, 400);
+    return json({ error: "Unknown action." }, corsHeaders, 400);
   } catch (error) {
-    console.error(error);
-    return json({ error: "Unable to process the live match request." }, 500);
+    console.error("Live match request failed.");
+    return json({ error: "Unable to process the live match request." }, corsHeaders, 500);
   }
 });
 

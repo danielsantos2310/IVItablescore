@@ -157,7 +157,13 @@ async function openRefereeShare() {
   if (button) button.disabled = true;
   try {
     if (!liveSession || liveSession.localMatchId !== match.id) {
-      const created = await sendLiveRequest({ action: "create", match_state: match });
+      const createToken = window.prompt("Enter the staff live-sharing code.");
+      if (!createToken?.trim()) return;
+      const created = await sendLiveRequest({
+        action: "create",
+        create_token: createToken.trim(),
+        match_state: match
+      });
       liveSession = {
         localMatchId: match.id,
         remoteMatchId: created.match_id,
@@ -172,7 +178,7 @@ async function openRefereeShare() {
   } catch (error) {
     const status = document.getElementById("refereeShareStatus");
     if (status) {
-      status.textContent = error.message || "Could not create the referee link.";
+      status.textContent = "Could not create the referee link. Check the live-sharing configuration and try again.";
       status.classList.add("error");
     }
     document.getElementById("refereeShareOverlay")?.classList.remove("hidden");
@@ -2606,7 +2612,22 @@ function renderV2RosterList(target, teamData, onCourt) {
     row.dataset.team = teamData.team;
     row.dataset.player = number;
     row.dataset.onCourt = String(onCourt);
-    row.innerHTML = `<span class="v2-player-number">${number}</span><span class="v2-player-name">${teamData.names[number] || (isLibero ? "Libero" : "Player")}</span>${onCourt ? `<span class="v2-player-position">P${index + 1}</span>` : "<span class=\"v2-drag-handle\" aria-hidden=\"true\">::</span>"}`;
+    const numberLabel = document.createElement("span");
+    numberLabel.className = "v2-player-number";
+    numberLabel.textContent = number;
+    const nameLabel = document.createElement("span");
+    nameLabel.className = "v2-player-name";
+    nameLabel.textContent = teamData.names[number] || (isLibero ? "Libero" : "Player");
+    const detail = document.createElement("span");
+    if (onCourt) {
+      detail.className = "v2-player-position";
+      detail.textContent = `P${index + 1}`;
+    } else {
+      detail.className = "v2-drag-handle";
+      detail.setAttribute("aria-hidden", "true");
+      detail.textContent = "::";
+    }
+    row.append(numberLabel, nameLabel, detail);
 
     if (!onCourt && !isLibero) {
       row.draggable = true;
@@ -3016,7 +3037,14 @@ function renderV2Workspace() {
   const servingBase = match.serving === "home" ? match.homeBaseRotation : match.awayBaseRotation;
   const servingNumber = getServeOrder(servingBase || [])[0] || "--";
   const serving = document.getElementById("v2ServingState");
-  if (serving) serving.innerHTML = `<img src="images/ui/mikasa.png" alt="" /><span>${servingName} serving</span>`;
+  if (serving) {
+    const ball = document.createElement("img");
+    ball.src = "images/ui/mikasa.png";
+    ball.alt = "";
+    const label = document.createElement("span");
+    label.textContent = `${servingName} serving`;
+    serving.replaceChildren(ball, label);
+  }
   const persistentServer = document.getElementById("v2PersistentServer");
   if (persistentServer) persistentServer.textContent = `Serving: ${servingName} · #${servingNumber}`;
 
