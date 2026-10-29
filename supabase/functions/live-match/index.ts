@@ -1,35 +1,16 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const allowedOrigins = new Set(
-  (Deno.env.get("LIVE_MATCH_ALLOWED_ORIGINS") ?? "")
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean),
-);
-
-function corsHeadersFor(request: Request) {
-  const origin = request.headers.get("origin");
-  if (!origin || !allowedOrigins.has(origin)) return null;
-  return {
-    "Access-Control-Allow-Origin": origin,
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
-    "Vary": "Origin",
-  };
-}
+};
 
 function json(body: unknown, corsHeaders: Record<string, string>, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: corsHeaders });
-}
-
-function forbidden() {
-  return new Response(JSON.stringify({ error: "Origin not allowed." }), {
-    status: 403,
-    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
-  });
 }
 
 function getSecretKey() {
@@ -63,12 +44,6 @@ async function hash(value: unknown) {
   return Array.from(new Uint8Array(digest)).map((part) => part.toString(16).padStart(2, "0")).join("");
 }
 
-async function hasValidCreateToken(value: unknown) {
-  const configured = Deno.env.get("LIVE_MATCH_CREATE_TOKEN");
-  if (!configured) return false;
-  return (await hash(configured)) === (await hash(value));
-}
-
 function isUuid(value: unknown): value is string {
   return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
@@ -87,8 +62,6 @@ function validState(value: unknown) {
 }
 
 Deno.serve(async (request) => {
-  const corsHeaders = corsHeadersFor(request);
-  if (!corsHeaders) return forbidden();
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
@@ -125,9 +98,6 @@ Deno.serve(async (request) => {
     const action = body?.action;
 
     if (action === "create") {
-      if (!await hasValidCreateToken(body.create_token)) {
-        return json({ error: "Not authorized." }, corsHeaders, 403);
-      }
       if (!validState(body.match_state)) return json({ error: "Invalid match state." }, corsHeaders, 400);
 
       const staffToken = token();
