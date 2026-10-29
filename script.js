@@ -157,11 +157,8 @@ async function openRefereeShare() {
   if (button) button.disabled = true;
   try {
     if (!liveSession || liveSession.localMatchId !== match.id) {
-      const createToken = window.prompt("Enter the staff live-sharing code.");
-      if (!createToken?.trim()) return;
       const created = await sendLiveRequest({
         action: "create",
-        create_token: createToken.trim(),
         match_state: match
       });
       liveSession = {
