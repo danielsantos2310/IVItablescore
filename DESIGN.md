@@ -160,6 +160,8 @@ V2 uses green and orange only as team-side accents. Libero and serving states al
 
 - `Set Lineups & Libero` opens roster, starting-six, libero, and role entry only.
 - `Receive Formation` opens the current receiving team's 5-1 court only. It does not require the scorer to scroll through lineup controls.
+- The last two roster entries, `L1` and `L2`, explicitly define the libero(s) for the current match; any jersey number entered there is treated as a libero.
+- Registered team squads may be larger than a match roster. The lineup editor caps the selected match roster at 14 and provides visible remove/add controls for squad selection.
 
 ## V2 Live Court
 
