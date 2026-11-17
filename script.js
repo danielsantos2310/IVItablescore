@@ -400,6 +400,26 @@ const TEAM_ROSTER_PROFILES = {
       { name: "Gabrielly Goncalves", number: "6", photo: "images/players/ravens/gabrielly-goncalves.png" },
       { name: "Sirleia Aparecida Simão", number: "2", photo: "images/players/ravens/sirleia-aparecida-simao.png" }
     ]
+  },
+  phoenix: {
+    players: [
+      { name: "Bruno Rosendo", number: "1", photo: "images/players/phoenix/bruno-rosendo.png" },
+      { name: "Matheus Clark Dos Santos Monte", number: "13", photo: "images/players/phoenix/matheus-clark-dos-santos-monte.png" },
+      { name: "Shin-Ji Low", number: "55", photo: "images/players/phoenix/shin-ji-low.png" },
+      { name: "Michael Murphy", number: "10", photo: "images/players/phoenix/michael-murphy.png" },
+      { name: "Suriya Raman", number: "33", photo: "images/players/phoenix/suriya-raman.png" },
+      { name: "Teodor Yurmanovych", number: "8", photo: "images/players/phoenix/teodor-yurmanovych.png" },
+      { name: "Pranay Madanala", number: "06", photo: "images/players/phoenix/pranay-madanala.png" },
+      { name: "Bruno Soares", number: "7", photo: "images/players/phoenix/bruno-soares.png" },
+      { name: "Lorenzo Pignaton", number: "23", photo: "images/players/phoenix/lorenzo-pignaton.png" },
+      { name: "Pranshu Prasun", number: "19", libero: true, photo: "images/players/phoenix/pranshu-prasun.png" },
+      { name: "Serkan Ozgan", number: "16", photo: "images/players/phoenix/serkan-ozgan.png" },
+      { name: "Luis Ricardo Ferraz", number: "27", photo: "images/players/phoenix/luis-ricardo-ferraz.png" },
+      { name: "Pedro Ragonezi", number: "12", photo: "images/players/phoenix/pedro-ragonezi.png" },
+      { name: "Kavilarasan Rajendran", number: "25", libero: true, photo: "images/players/phoenix/kavilarasan-rajendran.png" },
+      { name: "Pavan Yadav", number: "97", photo: "images/players/phoenix/pavan-yadav.png" },
+      { name: "Geraldo Selvia", number: "66", photo: "images/players/phoenix/geraldo-selvia.png" }
+    ]
   }
 };
 
