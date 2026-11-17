@@ -736,6 +736,53 @@
       line-height: 1.05;
     }
 
+    /* Registered squad portraits use the same compact role + number treatment as the live court. */
+    .receive-player.has-photo {
+      background: #071525;
+      border-radius: 50%;
+      border-width: 2px;
+      height: clamp(42px, 10vw, 52px);
+      overflow: visible;
+      width: clamp(42px, 10vw, 52px);
+    }
+
+    .receive-player-photo {
+      border-radius: inherit;
+      height: calc(100% - 4px);
+      inset: 2px;
+      object-fit: cover;
+      pointer-events: none;
+      position: absolute;
+      width: calc(100% - 4px);
+      z-index: 0;
+    }
+
+    .receive-player.has-photo > span,
+    .receive-player.has-photo > strong {
+      background: #071525;
+      border: 1px solid currentColor;
+      border-radius: 3px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+      line-height: 1;
+      padding: 2px 3px;
+      position: absolute;
+      white-space: nowrap;
+      z-index: 1;
+    }
+
+    .receive-player.has-photo > span {
+      font-size: 8px;
+      left: 50%;
+      top: -8px;
+      transform: translateX(-50%);
+    }
+
+    .receive-player.has-photo > strong {
+      bottom: -7px;
+      font-size: clamp(11px, 2.7vw, 13px);
+      right: -7px;
+    }
+
     .role-opposite { left: 10%; top: 13%; }
     .role-middle-two { left: 26%; top: 10%; }
     .role-middle-one { left: -9%; top: 77%; }

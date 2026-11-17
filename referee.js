@@ -15,9 +15,10 @@ const receiveTemplates = {
 
 function escapeHtml(value) { const div = document.createElement("div"); div.textContent = String(value ?? "-"); return div.innerHTML; }
 function byId(id) { return document.getElementById(id); }
-function teamData(state, team) { const home = team === "home"; return { name: home ? state.homeTeam : state.awayTeam, court: home ? state.homeCourt || [] : state.awayCourt || [], base: home ? state.homeBaseRotation || [] : state.awayBaseRotation || [], libero: home ? state.homeLibero : state.awayLibero, system: home ? state.homeSystem : state.awaySystem, rotations: home ? state.homeRotationCount || 0 : state.awayRotationCount || 0, roleMap: home ? state.homeRoleMap || {} : state.awayRoleMap || {}, pairs: home ? state.homeSubstitutionPairs || [] : state.awaySubstitutionPairs || [], subs: home ? state.homeSubsUsed || 0 : state.awaySubsUsed || 0 }; }
+function teamData(state, team) { const home = team === "home"; return { name: home ? state.homeTeam : state.awayTeam, court: home ? state.homeCourt || [] : state.awayCourt || [], base: home ? state.homeBaseRotation || [] : state.awayBaseRotation || [], libero: home ? state.homeLibero : state.awayLibero, system: home ? state.homeSystem : state.awaySystem, rotations: home ? state.homeRotationCount || 0 : state.awayRotationCount || 0, roleMap: home ? state.homeRoleMap || {} : state.awayRoleMap || {}, pairs: home ? state.homeSubstitutionPairs || [] : state.awaySubstitutionPairs || [], subs: home ? state.homeSubsUsed || 0 : state.awaySubsUsed || 0, playerPhotos: home ? state.homePlayerPhotos || {} : state.awayPlayerPhotos || {}, rosterSlots: home ? state.homeRosterSlots || [] : state.awayRosterSlots || [], rosterPhotoSlots: home ? state.homeRosterPhotoSlots || [] : state.awayRosterPhotoSlots || [] }; }
 function serveOrder(base) { return [base[0],base[1],base[2],base[3],base[4],base[5]].filter(Boolean); }
 function activeRole(team, number) { const pair = team.pairs.find(item => item.original === number && !item.closed); return pair ? pair.replacement : number; }
+function getPlayerPhoto(team, number) { const jersey = String(number || ""); const direct = team.playerPhotos?.[jersey]; const slot = team.rosterSlots.map(String).indexOf(jersey); const fallback = slot >= 0 ? team.rosterPhotoSlots?.[slot] : ""; const photo = direct || fallback; return typeof photo === "string" && /^images\/players\/[a-z0-9/_-]+\.png$/i.test(photo) ? photo : ""; }
 
 function renderRotationCard(state, teamKey) {
   const team = teamData(state, teamKey); const serving = state.serving === teamKey; const labels=["P1","P2","P3","P4","P5","P6"]; const display=[3,2,1,4,5,0]; const order=serveOrder(team.base);
@@ -31,7 +32,7 @@ function renderReceive(state) {
   const number = (team.rotations % 6) + 1; const template=receiveTemplates[number]; const players=byId("receivePlayers");
   byId("receiveTitle").textContent = `${team.name} receiving`;
   byId("receiveMeta").textContent = `5-1 · Rotation ${number}`;
-  players.innerHTML = Object.entries(template).map(([role, position]) => { const num=role === "libero" ? team.libero : activeRole(team, team.roleMap[role]); return `<span class="receive-player ${role === "libero" ? "libero" : role === "setter" ? "setter" : ""}" style="left:${position[0]}%;top:${position[1]}%"><em>${roleLabels[role]}</em><small>${num ? "#"+escapeHtml(num) : "--"}</small></span>`; }).join("");
+  players.innerHTML = Object.entries(template).map(([role, position]) => { const num=role === "libero" ? team.libero : activeRole(team, team.roleMap[role]); const photo=getPlayerPhoto(team,num); return `<span class="receive-player${photo ? " has-photo" : ""} ${role === "libero" ? "libero" : role === "setter" ? "setter" : ""}" style="left:${position[0]}%;top:${position[1]}%">${photo ? `<img class="receive-player-photo" src="${escapeHtml(photo)}" alt="" aria-hidden="true">` : ""}<em>${roleLabels[role]}</em><small>${num ? "#"+escapeHtml(num) : "--"}</small></span>`; }).join("");
   section.classList.remove("hidden");
 }
 

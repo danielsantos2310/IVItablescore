@@ -2536,6 +2536,26 @@ function renderServeReceiveExample() {
       ? libero
       : getActiveRoleNumber(receivingTeam, roleMap?.[player.dataset.role]);
     player.querySelector("strong").textContent = number ? `#${number}` : "--";
+    const photo = getPlayerPhoto(receivingTeam, number);
+    let portrait = player.querySelector(".receive-player-photo");
+    if (photo) {
+      if (!portrait) {
+        portrait = document.createElement("img");
+        portrait.className = "receive-player-photo";
+        portrait.alt = "";
+        portrait.setAttribute("aria-hidden", "true");
+        portrait.addEventListener("error", () => {
+          player.classList.remove("has-photo");
+          portrait.remove();
+        }, { once: true });
+        player.prepend(portrait);
+      }
+      if (portrait.src !== new URL(photo, window.location.href).href) portrait.src = photo;
+      player.classList.add("has-photo");
+    } else {
+      player.classList.remove("has-photo");
+      portrait?.remove();
+    }
   });
 }
 
