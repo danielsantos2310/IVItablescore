@@ -391,11 +391,14 @@ const TEAM_ROSTER_PROFILES = {
       { name: "Carolina Malta", number: "10", photo: "images/players/ravens/carolina-malta.png" },
       { name: "Thamires Fernandes Ferreira", number: "13", photo: "images/players/ravens/thamires-fernandes-ferreira.png" },
       { name: "Dimitra Palla", number: "11", libero: true, photo: "images/players/ravens/dimitra-palla.png" },
-      { name: "Tahita Amaral", number: "16", photo: "images/players/ravens/tahita-amaral.png" },
+      { name: "Tahita Amaral", number: "16", libero: true, photo: "images/players/ravens/tahita-amaral.png" },
       { name: "Mariana Delgado", number: "8", photo: "images/players/ravens/mariana-delgado.png" },
       { name: "Alexandra Ometita", number: "22", photo: "images/players/ravens/alexandra-ometita.png" },
       { name: "Iara Zacharjasiewicz dos Santos", number: "12", photo: "images/players/ravens/iara-zacharjasiewicz-dos-santos.png" },
-      { name: "Daniele Valenca", number: "25", photo: "images/players/ravens/daniele-valenca.png" }
+      { name: "Daniele Valenca", number: "25", photo: "images/players/ravens/daniele-valenca.png" },
+      { name: "Viktória Viski", number: "5", photo: "images/players/ravens/viktoria-viski.png" },
+      { name: "Gabrielly Goncalves", number: "6", photo: "images/players/ravens/gabrielly-goncalves.png" },
+      { name: "Sirleia Aparecida Simão", number: "2", photo: "images/players/ravens/sirleia-aparecida-simao.png" }
     ]
   }
 };
@@ -435,9 +438,10 @@ function applyTeamRosterProfile(team) {
 
   const regularPlayers = profile.players.filter(player => !player.libero);
   const liberoPlayers = profile.players.filter(player => player.libero);
+  // A match may register up to 14 people. The Ravens profile holds a larger
+  // squad, so the lineup editor lets the scorer choose the final 14.
   const slotPlayers = [
-    ...regularPlayers,
-    ...Array(Math.max(0, 12 - regularPlayers.length)).fill(null),
+    ...regularPlayers.slice(0, 12),
     ...liberoPlayers.slice(0, 2)
   ].slice(0, 14);
   const slots = slotPlayers.map(player => player?.number || null);
@@ -497,6 +501,89 @@ function addMissingTeamProfilePlayers(team) {
     slots.map((number, index) => [number, photoSlots[index]]).filter(([number, photo]) => number && photo)
   );
   return true;
+}
+
+function getConfiguredLiberoNumbers(team, slots = getStoredRosterSlots(team)) {
+  return slots.slice(12, 14).filter(Boolean);
+}
+
+function updateMatchRosterSelection(team, player, include) {
+  if (!match) return;
+  const slots = getStoredRosterSlots(team);
+  const nameSlots = getStoredRosterNameSlots(team, slots);
+  const photoSlots = Array.isArray(match[`${team}RosterPhotoSlots`])
+    ? match[`${team}RosterPhotoSlots`].slice(0, 14)
+    : Array(14).fill("");
+  while (photoSlots.length < 14) photoSlots.push("");
+  const selected = slots.filter(Boolean);
+  const existingIndex = slots.indexOf(player.number);
+
+  const targetSlots = player.libero ? [12, 13] : Array.from({ length: 12 }, (_, index) => index);
+  if (include) {
+    if (existingIndex >= 0 || selected.length >= 14) return;
+    const emptyIndex = targetSlots.find(index => !slots[index]);
+    if (emptyIndex < 0) return;
+    slots[emptyIndex] = player.number;
+    nameSlots[emptyIndex] = player.name;
+    photoSlots[emptyIndex] = player.photo || "";
+  } else {
+    if (existingIndex < 0) return;
+    slots[existingIndex] = null;
+    nameSlots[existingIndex] = "";
+    photoSlots[existingIndex] = "";
+    ["StartingSix", "BaseRotation", "Court"].forEach(key => {
+      const values = match[`${team}${key}`];
+      if (Array.isArray(values)) match[`${team}${key}`] = values.map(number => number === player.number ? null : number);
+    });
+    match[`${team}Liberos`] = getConfiguredLiberoNumbers(team, slots);
+    if (match[`${team}Libero`] === player.number) match[`${team}Libero`] = null;
+  }
+
+  match[`${team}RosterSlots`] = slots;
+  match[`${team}RosterNameSlots`] = nameSlots;
+  match[`${team}RosterPhotoSlots`] = photoSlots;
+  match[`${team}Roster`] = slots.filter(Boolean);
+  match[`${team}PlayerNames`] = Object.fromEntries(slots.map((number, index) => [number, nameSlots[index]]).filter(([number, name]) => number && name));
+  match[`${team}PlayerPhotos`] = Object.fromEntries(slots.map((number, index) => [number, photoSlots[index]]).filter(([number, photo]) => number && photo));
+  saveMatchToStorage();
+  renderLineupEditor(team);
+}
+
+function renderProfileRosterSelection(team) {
+  const container = document.getElementById(`${team}ProfileRosterSelection`);
+  if (!container || !match) return;
+  const teamName = team === "home" ? match.homeTeam : match.awayTeam;
+  const profile = getTeamRosterProfile(teamName);
+  container.replaceChildren();
+  if (!profile) return;
+
+  const selected = new Set(getStoredRosterSlots(team).filter(Boolean));
+  const heading = document.createElement("div");
+  heading.className = "profile-roster-selection-head";
+  heading.textContent = `Registered squad ${selected.size}/14 selected`;
+  container.appendChild(heading);
+  const list = document.createElement("div");
+  list.className = "profile-roster-selection-list";
+  profile.players.forEach(player => {
+    const isSelected = selected.has(player.number);
+    const item = document.createElement("div");
+    item.className = `profile-roster-player${isSelected ? " is-selected" : ""}`;
+    const label = document.createElement("span");
+    label.textContent = `#${player.number} ${player.name}${player.libero ? " (L)" : ""}`;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `profile-roster-toggle${isSelected ? " is-remove" : ""}`;
+    button.textContent = isSelected ? "×" : "+";
+    button.setAttribute("aria-label", isSelected ? `Remove ${player.name} from this match` : `Add ${player.name} to this match`);
+    button.title = button.getAttribute("aria-label");
+    const playerSlots = player.libero ? [12, 13] : Array.from({ length: 12 }, (_, index) => index);
+    const hasCompatibleSpace = playerSlots.some(index => !getStoredRosterSlots(team)[index]);
+    button.disabled = !isSelected && (selected.size >= 14 || !hasCompatibleSpace);
+    button.addEventListener("click", () => updateMatchRosterSelection(team, player, !isSelected));
+    item.append(label, button);
+    list.appendChild(item);
+  });
+  container.appendChild(list);
 }
 
 function getPlayerPhoto(team, number) {
@@ -905,12 +992,10 @@ function updateLiberoSelectOptions(team) {
   const select = document.getElementById(`${team}ActiveLibero`);
   if (!select) return;
   const previous = select.value;
-  const liberoEntries = [13, 14]
-    .map((slot, index) => ({
-      label: `L${index + 1}`,
-      number: document.getElementById(`${team}Roster${slot}`)?.value.trim()
-    }))
-    .filter(entry => entry.number);
+  const slots = Array.from(document.querySelectorAll(`#${team}RosterInputs input[data-roster-slot]`))
+    .map(input => input.value.trim() || null);
+  const liberoEntries = getConfiguredLiberoNumbers(team, slots)
+    .map((number, index) => ({ label: `L${index + 1}`, number }));
   const liberoNumbers = liberoEntries.map(entry => entry.number);
   select.innerHTML = "";
   const noneOption = document.createElement("option");
@@ -990,6 +1075,7 @@ function renderLineupEditor(team) {
 
   title.textContent = isHome ? match.homeTeam : match.awayTeam;
   renderLineupSystemToggle(team);
+  renderProfileRosterSelection(team);
   rosterContainer.innerHTML = "";
   slots.forEach((value, index) => {
     rosterContainer.appendChild(createLineupRosterRow(team, index, value, nameSlots[index]));
@@ -1016,7 +1102,8 @@ function renderLineupEditor(team) {
 }
 
 function createLineupRosterRow(team, index, value, slotName = "") {
-  const isLibero = index >= 12;
+  const isProfileTeam = Boolean(getTeamRosterProfile(team === "home" ? match.homeTeam : match.awayTeam));
+  const isLibero = getConfiguredLiberoNumbers(team).includes(value) || (!isProfileTeam && index >= 12);
   const row = document.createElement("div");
   row.className = `lineup-roster-row${isLibero ? " libero" : ""}`;
   row.draggable = Boolean(value) && !isLibero;
@@ -1222,11 +1309,12 @@ function collectLineupTeam(team) {
   startingInputs.forEach(input => {
     starting[Number(input.dataset.rotationIndex)] = input.value.trim() || null;
   });
+  const liberos = getConfiguredLiberoNumbers(team, slots);
   return {
     slots,
     nameSlots: nameInputs.map(input => input.value.trim()),
-    regular: slots.slice(0, 12).filter(Boolean),
-    liberos: slots.slice(12, 14).filter(Boolean),
+    regular: slots.filter(number => number && !liberos.includes(number)),
+    liberos,
     starting,
     activeLibero: document.getElementById(`${team}ActiveLibero`)?.value || null,
     liberoPartner: document.getElementById(`${team}LiberoPartner`)?.value.trim() || null,
@@ -1251,9 +1339,9 @@ function validateLineupTeam(team) {
   const repeatedStarters = data.starting.filter((number, index) => number && data.starting.indexOf(number) !== index);
   if (repeatedStarters.length) issues.push("Starting positions must be unique.");
   const outsideRoster = data.starting.filter(number => number && !data.regular.includes(number));
-  if (outsideRoster.length) issues.push(`Starting player not in slots 1-12: ${[...new Set(outsideRoster)].join(", ")}.`);
+  if (outsideRoster.length) issues.push(`Starting player is not a regular match-roster player: ${[...new Set(outsideRoster)].join(", ")}.`);
   if (data.liberos.length && !data.activeLibero) issues.push("Choose the active libero.");
-  if (data.activeLibero && !data.liberos.includes(data.activeLibero)) issues.push("Active libero must be L1 or L2.");
+  if (data.activeLibero && !data.liberos.includes(data.activeLibero)) issues.push("Active libero must be in the match roster.");
   if (data.activeLibero && !data.liberoPartner) issues.push("Choose at least one player for the libero to replace.");
   const replacementPlayers = [data.liberoPartner, data.liberoPartner2].filter(Boolean);
   if (!data.activeLibero && replacementPlayers.length) issues.push("Choose an active libero or clear the replacement fields.");

@@ -2432,6 +2432,18 @@
     .lineup-roster-name::placeholder { color: #65819e; }
     .lineup-roster-row.libero .lineup-roster-number { border-color: #8b5926; }
 
+    .profile-roster-selection { margin: 6px 0 9px; }
+    .profile-roster-selection:empty { display: none; }
+    .profile-roster-selection-head { color: #a9ceff; font-size: 10px; font-weight: 800; letter-spacing: .04em; margin-bottom: 4px; text-transform: uppercase; }
+    .profile-roster-selection-list { display: grid; gap: 3px; max-height: 156px; overflow: auto; padding-right: 2px; }
+    .profile-roster-player { align-items: center; background: #071525; border: 1px solid #294867; border-radius: 4px; color: #8fa2c2; display: grid; font-size: 11px; grid-template-columns: minmax(0, 1fr) 24px; min-height: 27px; padding-left: 7px; }
+    .profile-roster-player span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .profile-roster-player.is-selected { color: var(--text); border-color: #42637f; }
+    .profile-roster-toggle { align-items: center; background: transparent; border: 0; border-left: 1px solid #294867; color: #8fa2c2; cursor: pointer; display: grid; font-size: 18px; height: 100%; line-height: 1; place-items: center; width: 24px; }
+    .profile-roster-toggle:hover:not(:disabled), .profile-roster-toggle:focus-visible { background: rgba(255,111,0,.16); color: #ffc47a; outline: 2px solid #6bb7ef; outline-offset: -2px; }
+    .profile-roster-toggle.is-remove { color: #ffb07a; }
+    .profile-roster-toggle:disabled { color: #47627c; cursor: not-allowed; }
+
     .starting-position-field.is-drop-target,
     .five-one-role-target.is-drop-target {
       border-color: #f4d35e;
