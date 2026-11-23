@@ -27,6 +27,21 @@ let match = null;
 let matchTimerInterval = null;
 let timeoutTimerInterval = null;
 let scoreboardWindow = null;
+let localScoreWindow = null;
+let tacticalTeamKey = "ravens";
+let tacticalSlots = [];
+let tacticalSelectedSlot = null;
+let tacticalSelectedPlayer = null;
+let tacticalReturnFocus = null;
+
+function createTacticalSlots() {
+  return [
+    { x: 18, y: 25, number: null }, { x: 50, y: 25, number: null }, { x: 82, y: 25, number: null },
+    { x: 18, y: 75, number: null }, { x: 50, y: 75, number: null }, { x: 82, y: 75, number: null }
+  ];
+}
+
+tacticalSlots = createTacticalSlots();
 let audioPanelWindow = null;
 let pendingCardEntry = null;
 let pendingSetCompletion = null;
@@ -676,6 +691,7 @@ function createNewMatch() {
     events: [],
     homeSystem: "5-1",
     awaySystem: "5-1",
+    fiveOneRoleMapVersion: 2,
     homeRoleMap: {},
     awayRoleMap: {},
     homeRoleMapOverride: null,
@@ -901,10 +917,10 @@ function legacySetLineups() {
 
 const STARTING_POSITION_LAYOUT = [
   { label: "P4", role: "Opp", index: 3 },
-  { label: "P3", role: "OH1", index: 2 },
-  { label: "P2", role: "MB1", index: 1 },
-  { label: "P5", role: "MB2", index: 4 },
-  { label: "P6", role: "OH2", index: 5 },
+  { label: "P3", role: "MB1", index: 2 },
+  { label: "P2", role: "OH1", index: 1 },
+  { label: "P5", role: "OH2", index: 4 },
+  { label: "P6", role: "MB2", index: 5 },
   { label: "P1", role: "Setter", index: 0 }
 ];
 
@@ -919,12 +935,37 @@ const FIVE_ONE_ROLE_FIELDS = [
 
 const FIVE_ONE_STARTING_ROLE_INDEX = {
   setter: 0,
-  middleOne: 1,
-  hitterOne: 2,
+  hitterOne: 1,
+  middleOne: 2,
   opposite: 3,
-  middleTwo: 4,
-  hitterTwo: 5
+  hitterTwo: 4,
+  middleTwo: 5
 };
+
+// Role maps saved before V3 used the P2/P3 and P5/P6 role labels in reverse.
+// Swap those pairs once so existing saved lineups keep their players in the
+// correct physical starting zones.
+function migrateFiveOneRoleMapVersion() {
+  if (!match || Number(match.fiveOneRoleMapVersion) >= 2) return false;
+  const swapLegacyRolePairs = (roleMap) => {
+    if (!roleMap || typeof roleMap !== "object" || !Object.keys(roleMap).length) return roleMap || {};
+    return {
+      ...roleMap,
+      middleOne: roleMap.hitterOne || null,
+      hitterOne: roleMap.middleOne || null,
+      middleTwo: roleMap.hitterTwo || null,
+      hitterTwo: roleMap.middleTwo || null
+    };
+  };
+  ["home", "away"].forEach((team) => {
+    match[`${team}RoleMap`] = swapLegacyRolePairs(match[`${team}RoleMap`]);
+    match[`${team}RoleMapOverride`] = match[`${team}RoleMapOverride`]
+      ? swapLegacyRolePairs(match[`${team}RoleMapOverride`])
+      : null;
+  });
+  match.fiveOneRoleMapVersion = 2;
+  return true;
+}
 
 function getFiveOneStartingRoleMap(starting) {
   return Object.fromEntries(
@@ -1081,6 +1122,16 @@ function renderLiberoAssignment(team) {
   }
 }
 
+function renderLineupCurrentRotation(team) {
+  const currentRotation = match[team === "home" ? "homeBaseRotation" : "awayBaseRotation"] || [];
+  const currentRotationLabel = document.getElementById(`${team}CurrentRotation`);
+  if (currentRotationLabel) {
+    currentRotationLabel.textContent = currentRotation.length === 6 && currentRotation.every(Boolean)
+      ? `Current order: ${currentRotation.map((number, index) => `P${index + 1} #${number}`).join(" · ")}`
+      : "Current order: set the starting six first.";
+  }
+}
+
 function renderLineupEditor(team) {
   if (!match) return;
   const rosterContainer = document.getElementById(`${team}RosterInputs`);
@@ -1090,8 +1141,10 @@ function renderLineupEditor(team) {
   const slots = getStoredRosterSlots(team);
   const nameSlots = getStoredRosterNameSlots(team, slots);
   const starting = (isHome ? match.homeStartingSix : match.awayStartingSix) || [];
-  const values = starting.some(Boolean) ? starting : slots.slice(0, 6);
-  const system = match[team === "home" ? "homeSystem" : "awaySystem"] === "6-0" ? "6-0" : "5-1";
+  // Loading a registered squad must not silently place the first six players
+  // into court zones. Starting positions are coach-assigned only.
+  const values = Array.from({ length: 6 }, (_, index) => starting[index] || null);
+  renderLineupCurrentRotation(team);
 
   title.textContent = isHome ? match.homeTeam : match.awayTeam;
   renderLineupSystemToggle(team);
@@ -1106,7 +1159,7 @@ function renderLineupEditor(team) {
   STARTING_POSITION_LAYOUT.forEach(position => {
     const field = createNumberInput(
       `${team}Start${position.label}`,
-      system === "5-1" ? `${position.label} - ${position.role}` : position.label,
+      position.label,
       values[position.index],
       "starting-position-field",
       { team, rotationIndex: String(position.index) }
@@ -1225,23 +1278,33 @@ function renderFiveOneRoleMap(team, starting) {
   if (system === "6-0") return;
 
   const existingSelections = Object.fromEntries(FIVE_ONE_ROLE_FIELDS
-    .map(({ key }) => {
-      const input = document.getElementById(`${team}Role${key}`);
-      return [key, input?.dataset.manual === "true" ? input.value : null];
-    })
+    .map(({ key }) => [key, document.getElementById(`${team}Role${key}`)?.value || null])
     .filter(([, value]) => Boolean(value)));
+  const savedRoleMap = Object.fromEntries(
+    Object.entries(match?.[`${team}RoleMap`] || {})
+      .filter(([, number]) => Boolean(number))
+      .map(([key, number]) => [key, getActiveRoleNumber(team, number)])
+  );
   const activeRoleMap = Object.fromEntries(
     Object.entries(match?.[`${team}RoleMapOverride`] || {})
       .filter(([, number]) => Boolean(number))
       .map(([key, number]) => [key, getActiveRoleNumber(team, number)])
   );
-  const roleMap = { ...getFiveOneStartingRoleMap(starting), ...activeRoleMap, ...existingSelections };
+  // A loaded roster never assigns tactical roles. Once the coach deliberately
+  // fills P1-P6, the standard 5-1 zone map supplies the initial role targets;
+  // explicit saved, current-set, or typed choices still take priority.
+  const roleMap = {
+    ...getFiveOneStartingRoleMap(starting),
+    ...savedRoleMap,
+    ...activeRoleMap,
+    ...existingSelections
+  };
   const baseRotation = match[team === "home" ? "homeBaseRotation" : "awayBaseRotation"] || [];
   const eligiblePlayers = [...new Set([...starting, ...baseRotation].filter(Boolean))];
   container.innerHTML = "";
   const title = document.createElement("div");
   title.className = "five-one-role-map-title";
-  title.textContent = "5-1 court roles";
+  title.textContent = "5-1 court roles — assign manually";
   container.appendChild(title);
 
   FIVE_ONE_ROLE_FIELDS.forEach(({ key, label }) => {
@@ -1250,30 +1313,34 @@ function renderFiveOneRoleMap(team, starting) {
     const fieldLabel = document.createElement("label");
     fieldLabel.htmlFor = `${team}Role${key}`;
     fieldLabel.textContent = label;
-    const input = document.createElement("input");
-    input.type = "hidden";
-    input.id = `${team}Role${key}`;
-    input.value = eligiblePlayers.includes(roleMap[key]) ? roleMap[key] : "";
-    if (existingSelections[key]) input.dataset.manual = "true";
-    const target = document.createElement("div");
+    const target = document.createElement("input");
+    target.type = "text";
+    target.id = `${team}Role${key}`;
     target.className = "five-one-role-target";
-    target.tabIndex = 0;
-    target.setAttribute("role", "status");
-    target.textContent = input.value ? `#${input.value}` : "Drop player";
-    enableLineupDropTarget(target, team, number => {
-      if (!eligiblePlayers.includes(number)) return;
-      input.value = number;
-      input.dataset.manual = "true";
-      target.textContent = `#${number}`;
+    target.inputMode = "numeric";
+    target.autocomplete = "off";
+    target.maxLength = 2;
+    target.setAttribute("pattern", "[0-9]*");
+    target.placeholder = "Drop or type #";
+    target.value = eligiblePlayers.includes(roleMap[key]) ? roleMap[key] : "";
+    target.addEventListener("input", () => {
+      sanitizeJerseyInput(target);
       validateLineupTeam(team);
     });
-    field.append(fieldLabel, target, input);
+    enableLineupDropTarget(target, team, number => {
+      if (!eligiblePlayers.includes(number)) return;
+      target.value = number;
+      validateLineupTeam(team);
+    });
+    field.append(fieldLabel, target);
     container.appendChild(field);
   });
 }
 
 function getEffectiveRoleMap(team) {
+  const starting = (match?.[`${team}StartingSix`] || []).slice(0, 6);
   return {
+    ...getFiveOneStartingRoleMap(starting),
     ...(match?.[`${team}RoleMap`] || {}),
     ...(match?.[`${team}RoleMapOverride`] || {})
   };
@@ -1587,6 +1654,7 @@ function correctRotation(team, direction) {
   addEvent("ROTATION_CORRECTION", `${teamName} rotation corrected ${forward ? "forward" : "back"} one position.`, team, { direction });
   saveMatchToStorage();
   renderAll();
+  renderLineupCurrentRotation(team);
 }
 
 function updateCurrentCourt(team) {
@@ -2681,12 +2749,19 @@ function setupV2Layout() {
   moveToV2("btnEndMatch", "v2CourtActions");
   const topBar = document.querySelector("header.v2-setup-bar");
   const newMatchButton = document.getElementById("btnNewMatch");
+  const tacticalBoardButton = document.getElementById("btnOpenTacticalBoard");
+  const liveScoreButton = document.getElementById("btnOpenLiveScore");
   if (topBar && newMatchButton) topBar.appendChild(newMatchButton);
+  if (topBar && tacticalBoardButton) topBar.appendChild(tacticalBoardButton);
+  if (topBar && liveScoreButton) topBar.appendChild(liveScoreButton);
   moveToV2("btnLineups", "v2CourtTools");
 
   document.getElementById("btnOpenReceive")?.addEventListener("click", openReceiveFormation);
-  document.querySelectorAll("[data-rotation-correction-team]").forEach(button => {
-    button.addEventListener("click", () => correctRotation(button.dataset.rotationCorrectionTeam, button.dataset.rotationDirection));
+  document.getElementById("lineupWorkspace")?.addEventListener("click", event => {
+    const button = event.target.closest("[data-rotation-correction-team]");
+    if (!button || button.disabled) return;
+    event.preventDefault();
+    correctRotation(button.dataset.rotationCorrectionTeam, button.dataset.rotationDirection);
   });
   document.getElementById("v2LeftLibero")?.addEventListener("click", () => switchActiveLiberoForSide("left"));
   document.getElementById("v2RightLibero")?.addEventListener("click", () => switchActiveLiberoForSide("right"));
@@ -3152,6 +3227,7 @@ function renderV2Workspace() {
   if (courtDescription) courtDescription.textContent = "Rotation & server order";
   const receiveToggle = document.getElementById("btnOpenReceive");
   if (receiveToggle) {
+    receiveToggle.hidden = false;
     receiveToggle.textContent = "Receive Formation";
     receiveToggle.removeAttribute("aria-pressed");
     receiveToggle.disabled = false;
@@ -3784,7 +3860,201 @@ document.getElementById("btnConfirmTieBreakSetup")?.addEventListener("click", co
 document.getElementById("btnSubHome").addEventListener("click", () => substitutePlayer("home"));
 document.getElementById("btnSubAway").addEventListener("click", () => substitutePlayer("away"));
 document.getElementById("btnCloseSummary").addEventListener("click", () => hideMatchSummary());
+function openLocalLiveScoreWindow() {
+  if (localScoreWindow && !localScoreWindow.closed) {
+    localScoreWindow.focus();
+    return;
+  }
+  localScoreWindow = window.open("live-score.html", "ivi_local_live_score", "width=960,height=560");
+  if (!localScoreWindow) alert("Popup blocked. Please allow popups for this site.");
+}
+
+function getTacticalProfile() {
+  return TEAM_ROSTER_PROFILES[tacticalTeamKey] || TEAM_ROSTER_PROFILES.ravens;
+}
+
+function getTacticalPlayer(number) {
+  return getTacticalProfile().players.find((player) => String(player.number) === String(number)) || null;
+}
+
+function clearTacticalCourt() {
+  tacticalSlots = createTacticalSlots();
+  tacticalSelectedSlot = null;
+  tacticalSelectedPlayer = null;
+  renderTacticalBoard();
+}
+
+function assignTacticalPlayer(slotIndex, number) {
+  if (!tacticalSlots[slotIndex]) return;
+  tacticalSlots.forEach((slot) => {
+    if (String(slot.number) === String(number)) slot.number = null;
+  });
+  tacticalSlots[slotIndex].number = number;
+  tacticalSelectedSlot = slotIndex;
+  tacticalSelectedPlayer = null;
+  renderTacticalBoard();
+}
+
+function removeTacticalPlayer() {
+  if (tacticalSelectedSlot === null || !tacticalSlots[tacticalSelectedSlot]) return;
+  tacticalSlots[tacticalSelectedSlot].number = null;
+  tacticalSelectedSlot = null;
+  renderTacticalBoard();
+}
+
+function nudgeTacticalPlayer(direction) {
+  if (tacticalSelectedSlot === null || !tacticalSlots[tacticalSelectedSlot]?.number) return;
+  const slot = tacticalSlots[tacticalSelectedSlot];
+  const step = 4;
+  if (direction === "up") slot.y -= step;
+  if (direction === "down") slot.y += step;
+  if (direction === "left") slot.x -= step;
+  if (direction === "right") slot.x += step;
+  slot.x = Math.max(6, Math.min(94, slot.x));
+  slot.y = Math.max(8, Math.min(92, slot.y));
+  renderTacticalBoard();
+}
+
+function renderTacticalBoard() {
+  const profile = getTacticalProfile();
+  const title = document.getElementById("tacticalRosterTitle");
+  const roster = document.getElementById("tacticalPlayerList");
+  const court = document.getElementById("tacticalCourt");
+  const remove = document.getElementById("btnTacticalRemove");
+  const select = document.getElementById("tacticalTeamSelect");
+  if (!roster || !court) return;
+
+  if (title) title.textContent = `${tacticalTeamKey === "phoenix" ? "PHOENIX" : "RAVENS"} players`;
+  if (select) select.value = tacticalTeamKey;
+  roster.replaceChildren();
+  const selectedNumbers = new Set(tacticalSlots.map((slot) => String(slot.number)).filter(Boolean));
+  profile.players.forEach((player) => {
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = "tactical-player-option";
+    item.dataset.number = player.number;
+    if (String(tacticalSelectedPlayer) === String(player.number)) item.classList.add("is-selected");
+    if (selectedNumbers.has(String(player.number))) item.classList.add("is-on-court");
+    item.setAttribute("aria-pressed", String(tacticalSelectedPlayer) === String(player.number) ? "true" : "false");
+
+    if (player.photo) {
+      const portrait = document.createElement("img");
+      portrait.src = player.photo;
+      portrait.alt = "";
+      portrait.addEventListener("error", () => portrait.remove(), { once: true });
+      item.appendChild(portrait);
+    }
+    const label = document.createElement("span");
+    label.textContent = `#${player.number} ${player.name}`;
+    item.appendChild(label);
+    item.addEventListener("click", () => {
+      tacticalSelectedPlayer = player.number;
+      renderTacticalBoard();
+    });
+    roster.appendChild(item);
+  });
+
+  court.querySelectorAll(".tactical-marker").forEach((marker) => marker.remove());
+  tacticalSlots.forEach((slot, index) => {
+    const player = getTacticalPlayer(slot.number);
+    const marker = document.createElement("button");
+    marker.type = "button";
+    marker.className = `tactical-marker${player ? " is-filled" : " is-empty"}${tacticalSelectedSlot === index ? " is-selected" : ""}`;
+    marker.style.left = `${slot.x}%`;
+    marker.style.top = `${slot.y}%`;
+    marker.dataset.slot = String(index);
+
+    if (player) {
+      marker.setAttribute("aria-label", `${player.name}, number ${player.number}. Select or drag to reposition.`);
+      if (player.photo) {
+        const portrait = document.createElement("img");
+        portrait.src = player.photo;
+        portrait.alt = "";
+        portrait.addEventListener("error", () => portrait.remove(), { once: true });
+        marker.appendChild(portrait);
+      }
+      const number = document.createElement("span");
+      number.className = "tactical-marker-number";
+      number.textContent = player.number;
+      marker.appendChild(number);
+    } else {
+      marker.textContent = "+";
+      marker.setAttribute("aria-label", `Empty court marker ${index + 1}. Choose a player, then select this marker.`);
+    }
+
+    marker.addEventListener("click", () => {
+      if (tacticalSelectedPlayer) {
+        assignTacticalPlayer(index, tacticalSelectedPlayer);
+      } else {
+        tacticalSelectedSlot = index;
+        renderTacticalBoard();
+      }
+    });
+    marker.addEventListener("pointerdown", (event) => {
+      if (!player || event.button !== 0) return;
+      tacticalSelectedSlot = index;
+      tacticalSelectedPlayer = null;
+      const rect = court.getBoundingClientRect();
+      const move = (moveEvent) => {
+        slot.x = Math.max(6, Math.min(94, ((moveEvent.clientX - rect.left) / rect.width) * 100));
+        slot.y = Math.max(8, Math.min(92, ((moveEvent.clientY - rect.top) / rect.height) * 100));
+        marker.style.left = `${slot.x}%`;
+        marker.style.top = `${slot.y}%`;
+      };
+      const finish = () => {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", finish);
+        window.removeEventListener("pointercancel", finish);
+        renderTacticalBoard();
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", finish, { once: true });
+      window.addEventListener("pointercancel", finish, { once: true });
+    });
+    court.appendChild(marker);
+  });
+  if (remove) remove.disabled = tacticalSelectedSlot === null || !tacticalSlots[tacticalSelectedSlot]?.number;
+}
+
+function openTacticalBoard() {
+  const overlay = document.getElementById("tacticalBoardOverlay");
+  if (!overlay) return;
+  tacticalReturnFocus = document.activeElement;
+  renderTacticalBoard();
+  overlay.classList.remove("hidden");
+  document.getElementById("btnCloseTacticalBoard")?.focus();
+}
+
+function closeTacticalBoard() {
+  const overlay = document.getElementById("tacticalBoardOverlay");
+  if (!overlay) return;
+  overlay.classList.add("hidden");
+  tacticalReturnFocus?.focus?.();
+}
+
+function setupTacticalBoard() {
+  const overlay = document.getElementById("tacticalBoardOverlay");
+  document.getElementById("btnOpenTacticalBoard")?.addEventListener("click", openTacticalBoard);
+  document.getElementById("btnCloseTacticalBoard")?.addEventListener("click", closeTacticalBoard);
+  document.getElementById("btnTacticalReset")?.addEventListener("click", clearTacticalCourt);
+  document.getElementById("btnTacticalRemove")?.addEventListener("click", removeTacticalPlayer);
+  document.getElementById("tacticalTeamSelect")?.addEventListener("change", (event) => {
+    tacticalTeamKey = event.target.value;
+    clearTacticalCourt();
+  });
+  document.querySelectorAll("[data-tactical-nudge]").forEach((button) => {
+    button.addEventListener("click", () => nudgeTacticalPlayer(button.dataset.tacticalNudge));
+  });
+  overlay?.addEventListener("click", (event) => {
+    if (event.target === overlay) closeTacticalBoard();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && overlay && !overlay.classList.contains("hidden")) closeTacticalBoard();
+  });
+}
+
 document.getElementById("btnOpenScoreboard").addEventListener("click", () => openScoreboardWindow());
+document.getElementById("btnOpenLiveScore")?.addEventListener("click", openLocalLiveScoreWindow);
 document.getElementById("btnOpenAudioPanel")?.addEventListener("click", openAudioPanelWindow);
 document.getElementById("btnShareReferee")?.addEventListener("click", openRefereeShare);
 document.getElementById("btnCloseRefereeShare")?.addEventListener("click", closeRefereeShareOverlay);
@@ -3852,6 +4122,7 @@ window.addEventListener("message", (e) => {
 // ---- Init ----
 (function init() {
   setupV2Layout();
+  setupTacticalBoard();
   const stored = loadMatchFromStorage();
   if (stored) {
     match = stored;
@@ -3869,6 +4140,7 @@ window.addEventListener("message", (e) => {
     if (!match.awayRoleMap || typeof match.awayRoleMap !== "object") match.awayRoleMap = {};
     if (!match.homeRoleMapOverride || typeof match.homeRoleMapOverride !== "object") match.homeRoleMapOverride = null;
     if (!match.awayRoleMapOverride || typeof match.awayRoleMapOverride !== "object") match.awayRoleMapOverride = null;
+    const roleMapMigrated = migrateFiveOneRoleMapVersion();
     if (!match.serverVerification) match.serverVerification = { home: null, away: null };
     if (!Array.isArray(match.homeLiberos)) match.homeLiberos = [match.homeLibero, match.homeLibero2].filter(Boolean);
     if (!Array.isArray(match.awayLiberos)) match.awayLiberos = [match.awayLibero, match.awayLibero2].filter(Boolean);
@@ -3914,7 +4186,7 @@ window.addEventListener("message", (e) => {
     const profileApplied = homeProfileApplied || awayProfileApplied;
     const homeProfileMerged = addMissingTeamProfilePlayers("home");
     const awayProfileMerged = addMissingTeamProfilePlayers("away");
-    if (sampleCleared || profileApplied || homeProfileMerged || awayProfileMerged) saveMatchToStorage();
+    if (sampleCleared || profileApplied || homeProfileMerged || awayProfileMerged || roleMapMigrated) saveMatchToStorage();
     document.getElementById("homeNameInput").value = match.homeTeam;
     document.getElementById("awayNameInput").value = match.awayTeam;
     document.getElementById("matchIdInput").value = match.id;

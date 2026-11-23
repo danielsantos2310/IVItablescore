@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="referrer" content="no-referrer" />
+  <title>IVI Live Score</title>
+  <link rel="stylesheet" href="live-score.css" />
+</head>
+<body>
+  <main class="live-score-page" aria-live="polite">
+    <header class="live-score-header">
+      <div>
+        <p class="eyebrow">IVI Volleyball Live</p>
+        <h1 id="matchTitle">Live score</h1>
+      </div>
+      <p class="connection" id="connectionState">Local test</p>
+    </header>
+
+    <section class="scoreboard" aria-label="Current match score">
+      <article class="team-score team-score-left">
+        <img class="team-logo hidden" id="leftTeamLogo" alt="" />
+        <img class="serve-indicator hidden" id="leftServeIndicator" src="images/ui/mikasa.png" alt="" aria-hidden="true" />
+        <p class="team-name" id="leftTeamName">Team A</p>
+        <p class="score" id="leftScore">–</p>
+        <p class="sets">Sets <strong id="leftSets">0</strong></p>
+      </article>
+
+      <section class="set-panel" aria-label="Current set">
+        <span>Set</span>
+        <strong id="setNumber">–</strong>
+        <small id="matchState">Waiting for match</small>
+      </section>
+
+      <article class="team-score team-score-right">
+        <img class="team-logo hidden" id="rightTeamLogo" alt="" />
+        <img class="serve-indicator hidden" id="rightServeIndicator" src="images/ui/mikasa.png" alt="" aria-hidden="true" />
+        <p class="team-name" id="rightTeamName">Team B</p>
+        <p class="score" id="rightScore">–</p>
+        <p class="sets">Sets <strong id="rightSets">0</strong></p>
+      </article>
+    </section>
+
+    <p class="local-note" id="localNote">This local test updates from the scorer window on this browser only.</p>
+  </main>
+  <script src="live-score.js"></script>
+</body>
+</html>

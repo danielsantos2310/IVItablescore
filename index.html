@@ -41,6 +41,8 @@
         <button class="btn secondary" id="btnOpenAudioPanel">Audio Panel</button>
         <button class="btn secondary" id="btnShareReferee" type="button">Second Referee QR</button>
         <button class="btn secondary" id="btnNewMatch">New / Reset Match</button>
+        <button class="btn secondary" id="btnOpenTacticalBoard" type="button">Tactical Board</button>
+        <button class="btn secondary" id="btnOpenLiveScore" type="button">Live Score (Test)</button>
         <!-- Load Saved Match removed -->
         <button class="btn secondary" id="btnLineups" type="button" aria-expanded="false" aria-controls="lineupWorkspace">Set Lineups &amp; Libero</button>
       </div>
@@ -214,6 +216,7 @@
                 <button class="btn secondary" type="button" data-rotation-correction-team="home" data-rotation-direction="back" title="Move Team A back one rotation">Back 1</button>
                 <button class="btn secondary" type="button" data-rotation-correction-team="home" data-rotation-direction="forward" title="Move Team A forward one rotation">Forward 1</button>
               </div>
+              <div class="lineup-current-rotation" id="homeCurrentRotation" role="status"></div>
               <div class="lineup-field-label">Starting positions</div>
               <div class="starting-position-grid" id="homeStartingInputs"></div>
               <div class="five-one-role-map" id="homeRoleMap"></div>
@@ -235,6 +238,7 @@
                 <button class="btn secondary" type="button" data-rotation-correction-team="away" data-rotation-direction="back" title="Move Team B back one rotation">Back 1</button>
                 <button class="btn secondary" type="button" data-rotation-correction-team="away" data-rotation-direction="forward" title="Move Team B forward one rotation">Forward 1</button>
               </div>
+              <div class="lineup-current-rotation" id="awayCurrentRotation" role="status"></div>
               <div class="lineup-field-label">Starting positions</div>
               <div class="starting-position-grid" id="awayStartingInputs"></div>
               <div class="five-one-role-map" id="awayRoleMap"></div>
@@ -472,6 +476,51 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <div id="tacticalBoardOverlay" class="summary-overlay tactical-overlay hidden no-print" role="dialog" aria-modal="true" aria-labelledby="tacticalBoardTitle">
+    <section class="tactical-board-panel">
+      <header class="summary-header">
+        <div>
+          <div class="summary-title" id="tacticalBoardTitle">Tactical Board</div>
+          <div class="summary-sub">Training planner. Select a player, place them on court, then drag to organise the formation.</div>
+        </div>
+        <button class="btn secondary" id="btnCloseTacticalBoard" type="button">Close</button>
+      </header>
+      <div class="tactical-toolbar">
+        <label for="tacticalTeamSelect">Training team
+          <select id="tacticalTeamSelect">
+            <option value="ravens">RAVENS</option>
+            <option value="phoenix">PHOENIX</option>
+          </select>
+        </label>
+        <div class="tactical-toolbar-actions">
+          <button class="btn secondary" id="btnTacticalReset" type="button">Clear Court</button>
+          <button class="btn secondary" id="btnTacticalRemove" type="button" disabled>Remove Selected</button>
+        </div>
+      </div>
+      <div class="tactical-board-layout">
+        <aside class="tactical-roster" aria-labelledby="tacticalRosterTitle">
+          <h3 id="tacticalRosterTitle">RAVENS players</h3>
+          <p>Choose a player, then choose an empty court marker. A selected marker can be moved with the arrows.</p>
+          <div class="tactical-player-list" id="tacticalPlayerList"></div>
+        </aside>
+        <section class="tactical-court-wrap" aria-label="Training court">
+          <div class="tactical-court" id="tacticalCourt">
+            <div class="tactical-net" aria-hidden="true">NET</div>
+            <div class="tactical-attack-line tactical-attack-top" aria-hidden="true"></div>
+            <div class="tactical-attack-line tactical-attack-bottom" aria-hidden="true"></div>
+          </div>
+          <div class="tactical-nudge" aria-label="Move selected player">
+            <span>Move selected</span>
+            <button class="btn secondary" type="button" data-tactical-nudge="up" aria-label="Move selected player up">↑</button>
+            <button class="btn secondary" type="button" data-tactical-nudge="left" aria-label="Move selected player left">←</button>
+            <button class="btn secondary" type="button" data-tactical-nudge="down" aria-label="Move selected player down">↓</button>
+            <button class="btn secondary" type="button" data-tactical-nudge="right" aria-label="Move selected player right">→</button>
+          </div>
+        </section>
+      </div>
+    </section>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/obs-websocket-js@5.0.6"></script>

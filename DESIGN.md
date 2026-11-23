@@ -147,6 +147,8 @@ V2 uses green and orange only as team-side accents. Libero and serving states al
 - The central status row persistently identifies the serving team and current server number until service changes.
 - Each side of the score banner keeps the set total adjacent to its score.
 - Lineup roster entry uses compact jersey-number and player-name rows. Regular-player rows can be dragged into starting positions and 5-1 role targets; direct number entry remains available for keyboard and touch operation.
+- The standard 5-1 starting role map is fixed to the official zones: P1 Setter, P6 MB2, P5 OH2, P4 Opposite, P3 MB1, and P2 OH1. The sequence repeats clockwise from P1 after rotation.
+- Service order follows the current P1 player: Setter, OH1, MB1, Opposite, OH2, MB2, then Setter again.
 
 ### V2.3 substitution and libero rules
 
@@ -162,6 +164,7 @@ V2 uses green and orange only as team-side accents. Libero and serving states al
 - `Receive Formation` opens the current receiving team's 5-1 court only. It does not require the scorer to scroll through lineup controls.
 - The last two roster entries, `L1` and `L2`, explicitly define the libero(s) for the current match; any jersey number entered there is treated as a libero.
 - Registered team squads may be larger than a match roster. The lineup editor caps the selected match roster at 14 and provides visible remove/add controls for squad selection.
+- Loading a registered squad fills player and libero data only. Starting zones remain blank until the scorer types or drags each player into place; after those explicit P1-P6 choices are made, the standard 5-1 zone map fills the matching role targets and remains editable.
 
 ## V2 Live Court
 

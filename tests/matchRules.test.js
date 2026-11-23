@@ -55,6 +55,13 @@ test("serve order starts with position one and follows the rotation", () => {
   assert.deepEqual(getServeOrder(["1", "2"]), []);
 });
 
+test("5-1 service sequence follows the corrected starting-zone roles", () => {
+  assert.deepEqual(
+    getServeOrder(["Setter", "OH1", "MB1", "Opposite", "OH2", "MB2"]),
+    ["Setter", "OH1", "MB1", "Opposite", "OH2", "MB2"]
+  );
+});
+
 test("libero waits through service, covers the back row, and leaves before the front row", () => {
   assert.deepEqual(getCourtWithLibero(["2", "3", "4", "5", "6", "1"], "13", ["2"], true), {
     court: ["2", "3", "4", "5", "6", "1"],

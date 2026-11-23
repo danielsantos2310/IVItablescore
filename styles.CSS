@@ -42,7 +42,7 @@
       background: radial-gradient(circle at top, #163a63 0, #071525 55%);
       color: var(--text);
       height: 100vh;
-      display: flex;
+      display: block;
       flex-direction: column;
     }
 
@@ -658,27 +658,22 @@
     }
 
     .receive-court-surface::before {
-      border-top: 1px dashed #42637f;
+      border-top: 2px solid rgba(161, 215, 237, .78);
       content: "";
       left: 0;
       position: absolute;
       right: 0;
-      top: 40%;
+      top: 33.333%;
     }
 
     .receive-court-surface::after {
-      border-top: 1px solid #42637f;
-      content: "";
-      left: 0;
-      position: absolute;
-      right: 0;
-      top: 50%;
+      display: none;
     }
 
     .receive-court-net {
-      background: #071525;
-      border-bottom: 1px solid #d8e5f4;
-      border-top: 1px solid #d8e5f4;
+      background: #02080e;
+      border-bottom: 2px solid #d8e5f4;
+      border-top: 2px solid #d8e5f4;
       color: #d8e5f4;
       font-size: 10px;
       font-weight: 800;
@@ -1201,6 +1196,14 @@
       font-size: 9px;
       min-height: 26px;
       padding: 4px 7px;
+    }
+
+    .lineup-current-rotation {
+      color: #8fa2c2;
+      font-size: 9px;
+      line-height: 1.35;
+      margin: 3px 0 6px;
+      min-height: 13px;
     }
 
     .starting-position-grid {
@@ -2332,9 +2335,10 @@
       position: relative;
     }
     .v2-full-court::before,
-    .v2-full-court::after { content: ""; inset: 33.333% 0 auto; border-top: 1px dashed rgba(161,215,237,.62); pointer-events: none; position: absolute; z-index: 1; }
-    .v2-full-court::after { inset: 66.666% 0 auto; }
-    .v2-court-net { background: repeating-linear-gradient(to bottom, #e5f0ff 0 7px, #102a43 7px 11px); position: relative; z-index: 4; }
+    .v2-full-court::after { border-left: 2px solid rgba(161,215,237,.78); bottom: 0; content: ""; pointer-events: none; position: absolute; top: 0; z-index: 1; }
+    .v2-full-court::before { left: 33.333%; }
+    .v2-full-court::after { left: 66.666%; }
+    .v2-court-net { background: #02080e; border-left: 1px solid #d8e5f4; border-right: 1px solid #d8e5f4; position: relative; z-index: 4; }
     .v2-court-team { display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(3, 1fr); min-width: 0; position: relative; z-index: 2; }
     .v2-court-left { border-right: 1px solid rgba(161,215,237,.45); }
     .v2-court-right { border-left: 1px solid rgba(161,215,237,.45); }
@@ -2503,13 +2507,67 @@
       border: 1px dashed #42637f;
       border-radius: 5px;
       color: var(--text);
-      cursor: copy;
-      display: flex;
+      cursor: text;
+      display: block;
+      font: inherit;
       font-size: 11px;
       font-weight: 800;
-      justify-content: center;
       min-height: 30px;
       padding: 5px;
       text-align: center;
+      width: 100%;
+    }
+    .five-one-role-target::placeholder { color: #65819e; font-weight: 700; }
+    .five-one-role-target:focus-visible { border-color: #6bb7ef; outline: 2px solid #6bb7ef; outline-offset: 1px; }
+
+    /* Training-only tactical board. Uses the same court language as the scorer without sharing match state. */
+    .tactical-overlay { z-index: 1100; }
+    .tactical-board-panel {
+      background: var(--surface);
+      border: 1px solid #355b7c;
+      border-radius: 10px;
+      box-shadow: 0 20px 55px rgba(0, 0, 0, .55);
+      max-height: calc(100dvh - 24px);
+      overflow: auto;
+      padding: 16px;
+      width: min(1120px, calc(100vw - 24px));
+    }
+    .tactical-toolbar { align-items: end; display: flex; gap: 12px; justify-content: space-between; margin: 12px 0; }
+    .tactical-toolbar label { color: var(--muted); display: grid; font-size: 11px; font-weight: 800; gap: 4px; letter-spacing: .04em; text-transform: uppercase; }
+    .tactical-toolbar select { background: var(--field); border: 1px solid #355b7c; border-radius: 5px; color: var(--text); font: inherit; min-height: 34px; padding: 5px 30px 5px 8px; }
+    .tactical-toolbar-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tactical-board-layout { display: grid; gap: 12px; grid-template-columns: minmax(220px, .6fr) minmax(420px, 1.4fr); }
+    .tactical-roster { background: var(--field); border: 1px solid #294867; border-radius: 7px; padding: 12px; }
+    .tactical-roster h3 { color: var(--text); font-size: 14px; margin: 0 0 5px; }
+    .tactical-roster p { color: var(--muted); font-size: 11px; line-height: 1.4; margin: 0 0 10px; }
+    .tactical-player-list { display: grid; gap: 6px; max-height: 430px; overflow: auto; padding-right: 3px; }
+    .tactical-player-option { align-items: center; background: #0b1e30; border: 1px solid #294867; border-radius: 5px; color: var(--text); cursor: pointer; display: grid; font: inherit; font-size: 12px; gap: 8px; grid-template-columns: 30px minmax(0, 1fr); min-height: 38px; padding: 4px 7px; text-align: left; }
+    .tactical-player-option:hover, .tactical-player-option:focus-visible { border-color: #6bb7ef; outline: 2px solid #6bb7ef; outline-offset: 1px; }
+    .tactical-player-option.is-selected { border-color: #f4d35e; box-shadow: inset 3px 0 #f4d35e; }
+    .tactical-player-option.is-on-court { color: #a9ceff; }
+    .tactical-player-option img { border: 1px solid #6bb7ef; border-radius: 50%; height: 28px; object-fit: cover; width: 28px; }
+    .tactical-court-wrap { min-width: 0; }
+    .tactical-court { aspect-ratio: 1.7 / 1; background: #0a3a49; border: 2px solid #dceeff; min-height: 320px; overflow: hidden; position: relative; }
+    .tactical-court::before, .tactical-court::after { border-top: 2px solid rgba(161, 215, 237, .78); content: ""; left: 0; position: absolute; right: 0; }
+    .tactical-court::before { top: 33.333%; }
+    .tactical-court::after { bottom: 33.333%; }
+    .tactical-net { align-items: center; background: #02080e; border-bottom: 2px solid #e5f0ff; border-top: 2px solid #e5f0ff; color: #e5f0ff; display: flex; font-size: 10px; font-weight: 900; height: 8px; justify-content: center; left: 0; letter-spacing: .16em; position: absolute; right: 0; text-align: center; top: 50%; transform: translateY(-50%); z-index: 1; }
+    .tactical-net::before { display: none; }
+    .tactical-marker { align-items: center; background: #0b1e30; border: 3px solid #6bb7ef; border-radius: 50%; color: var(--text); cursor: grab; display: grid; height: 58px; justify-content: center; padding: 0; position: absolute; transform: translate(-50%, -50%); user-select: none; width: 58px; z-index: 3; }
+    .tactical-marker:active { cursor: grabbing; }
+    .tactical-marker.is-empty { border-color: #52718b; border-style: dashed; color: #8fa2c2; cursor: pointer; font-size: 25px; }
+    .tactical-marker.is-selected { box-shadow: 0 0 0 4px rgba(244, 211, 94, .35); }
+    .tactical-marker:focus-visible { outline: 3px solid #f4d35e; outline-offset: 3px; }
+    .tactical-marker img { border-radius: 50%; height: 100%; object-fit: cover; pointer-events: none; width: 100%; }
+    .tactical-marker-number { align-items: center; background: #071525; border: 2px solid #e5f0ff; border-radius: 50%; bottom: -6px; color: #fff; display: flex; font-size: 12px; font-weight: 900; height: 25px; justify-content: center; position: absolute; right: -7px; width: 25px; }
+    .tactical-nudge { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .tactical-nudge span { color: var(--muted); font-size: 11px; font-weight: 800; margin-right: 2px; text-transform: uppercase; }
+    .tactical-nudge .btn { min-height: 32px; min-width: 36px; padding: 4px 8px; }
+
+    @media (max-width: 760px) {
+      .tactical-toolbar { align-items: stretch; flex-direction: column; }
+      .tactical-board-layout { grid-template-columns: 1fr; }
+      .tactical-player-list { max-height: 185px; }
+      .tactical-court { min-height: 250px; }
     }
   
